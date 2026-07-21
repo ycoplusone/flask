@@ -1,0 +1,9 @@
+<!-- 시작 부분 메뉴부분 이다. -->
+<nav class="nav-menu">
+	<a href="/nicon_sales" 		class="{{ 'active' if request.path == '/nicon_sales' 	else '' }}">✨니콘 현황</a>		
+	<a href="/survey_join" 		class="{{ 'active' if request.path == '/survey_join' 	else '' }}">📢참여 통계</a>
+	<a href="/survey_info?is_verified=N"	 	class="{{ 'active' if request.path == '/survey_info' 	else '' }}">📊수집 데이터 관리</a>
+	<a href="/survey_words" 	class="{{ 'active' if request.path == '/survey_words' 	else '' }}">🔑 검색 키워드 관리</a>
+	<a href="/target_words" 	class="{{ 'active' if request.path == '/target_words' 	else '' }}">🎯인식 단어 관리</a>
+	<a href="/exception_list" 	class="{{ 'active' if request.path == '/exception_list' else '' }}">🧹제외 단어 관리</a>
+</nav>

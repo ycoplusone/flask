@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <h1>화면과 로직이 성공적으로 분리되었습니다!</h1>
+    <p>이 화면은 <strong>templates/test/index.html</strong>에서 처리하고 있습니다.</p>
+    <ul>
+        <li><a href="/api/test/users">API 데이터(로직) 확인하기</a></li>
+        
+        <li><a href="/api/test/dbtest">db 테스트/a></li>
+    </ul>
+
+
+ <div class="container mt-5">
+        <h1>Flask-Bootstrap 테스트</h1>
+        
+        <!-- 폼 렌더링 테스트 -->
+        <div class="card p-4 mb-4">
+            <h3>1. 폼 테스트</h3>
+            
+            
+        </div>
+
+        <!-- 테이블 렌더링 테스트 -->
+        <div class="card p-4">
+            <h3>2. 테이블 테스트</h3>
+            
+        </div>
+    </div>
+
+
+{% endblock %}

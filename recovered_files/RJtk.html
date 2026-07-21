@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.chart-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: space-between;
+  padding: 5px;
+}
+.chart-box {
+  flex: 1 1 250px;
+  max-width: 100%;
+  min-width: 260px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+#surveyTable {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#surveyTable td,
+#surveyTable th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  word-break: break-word;
+  white-space: normal;
+}
+
+#surveyTable thead tr {
+  background: gray;
+  color: black;
+}
+
+#surveyTable tbody tr:hover {
+  background-color: lightgray;
+}
+
+#surveyTable th,
+#surveyTable td {
+  text-align: center;
+}
+
+.rainbow-text {
+  font-weight: 600;
+  background: linear-gradient(
+    90deg,
+    #d66a6a,
+    #d8a15c,
+    #d6cf7a,
+    #7fbf9b,
+    #7a9fd6,
+    #9a86c8,
+    #b68bbf
+  );
+  background-size: 200% 100%;
+  background-position: 50% 50%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbowMove 6s ease-in-out infinite;
+}
+
+@keyframes rainbowMove {
+  0% { background-position: 40% 50%; }
+  50% { background-position: 60% 50%; }
+  100% { background-position: 40% 50%; }
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.form-row input[type="text"] {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 180px;
+}
+
+.form-row button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+.form-row button:hover {
+  background-color: #0056b3;
+}
+</style>
+
+<div class="container py-4">
+  <div class="text-center mb-4">
+    <div style="font-size: 48px;">
+    📢참여 통계
+    </div>
+  </div>
+
+  <form method="POST" action="/survey_join">
+    <div class="form-row">
+      <input type="text" name="base_mm" placeholder="조회년월( ex 202507 )" value="{{ base_mm }}" required>
+      <input type="text" name="url" placeholder="url 검색" value="{{ url }}" required>
+      <button type="submit">조회</button>
+    </div>
+  </form>
+
+  <div class="chart-container">
+    <div id="chart-sales" class="chart-box"></div>
+    <div id="chart-expense" class="chart-box"></div>
+    <div id="chart-months" class="chart-box"></div>
+  </div>
+
+  <div style="width:100%; height:800px; overflow:auto">
+    <table id="surveyTable">
+      <colgroup>
+        <col style="width:15%">
+        <col style="width:20%">
+        <col style="width:10%">
+        <col style="width:10%">
+        <col style="width:5%">
+        <col style="width:5%">
+        <col style="width:5%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>작업명</th>
+          <th>URL</th>
+          <th>시작 시간</th>
+          <th>종료 시간</th>
+          <th>시작 횟수</th>
+          <th>완료 횟수</th>
+          <th>일별 횟수</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if table_rows %}
+          {% for row in table_rows %}
+          <tr>
+            <td>{{ row.job_nm }}</td>
+            <td>{{ row.url }}</td>
+            <td>{{ row.st_dt }}</td>
+            <td>{{ row.ed_dt }}</td>
+            <td>{{ row.st_ct }}</td>
+            <td>{{ row.ed_ct }}</td>
+            <td>{{ row.tot_cnt }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-3">조회된 데이터가 없습니다.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+
+<script>
+  const salesData = {{ sales_data | tojson | safe}};  
+
+  const salesChart = toastui.Chart.lineChart({
+    el: document.getElementById('chart-sales'),
+    data: salesData,
+    options: {
+      chart: { title: '시간별', width: 'auto', height: 200 },
+      xAxis: { type: 'category' },
+      yAxis: { title: '개수' },
+      series: { showDot: true, dataLabels: { visible: true, offsetY: -10 } },
+      legend: { align: 'top', selectable: false, visible: false },
+      exportMenu: { visible: false }
+    }
+  });
+</script>  
+<script>
+
+    const expenseData = {{ expense_data | tojson | safe }};
+  const expenseChart = toastui.Chart.lineChart({
+    el: document.getElementById('chart-expense'),
+    data: expenseData,
+    options: {
+      chart: { title: '일별', width: 'auto', height: 200 },
+      xAxis: { type: 'category' },
+      yAxis: { title: '개수' },
+      series: { showDot: true, dataLabels: { visible: true, offsetY: -10 } },
+      legend: { align: 'top', selectable: false, visible: false },
+      exportMenu: { visible: false }
+    }
+  });
+
+  </script>  
+<script>
+  const monthsData = {{ months_data | tojson | safe }};
+  const monthsChart = toastui.Chart.lineChart({
+    el: document.getElementById('chart-months'),
+    data: monthsData,
+    options: {
+      chart: { title: '월별', width: 'auto', height: 200 },
+      xAxis: { type: 'category' },
+      yAxis: { title: '개수' },
+      series: { showDot: true, dataLabels: { visible: true, offsetY: -10 } },
+      legend: { align: 'top', selectable: false, visible: false },
+      exportMenu: { visible: false }
+    }
+  });
+</script>
+{% endblock %}
