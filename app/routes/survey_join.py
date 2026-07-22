@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, request
 
-from app.logics.survey_join import get_survey_chart_data, get_survey_table_rows
+from app.logics.survey_join import get_survey_chart_data, get_survey_table_rows, normalize_base_mm
 
 survey_join = Blueprint('survey_join', __name__)
 
 
 @survey_join.route('/survey_join', methods=['GET', 'POST'])
 def survey_join1():
-    base_mm = request.values.get('base_mm', '')
+    base_mm = normalize_base_mm(request.values.get('base_mm', '').strip())
     url = request.values.get('url', '%')
 
     sales_data, expense_data, months_data = get_survey_chart_data(base_mm)
