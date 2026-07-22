@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime, timedelta
 
 from app.logics.login import addDevice
+import os
 
 loging_bp = Blueprint('loging_bp', __name__)
 
@@ -12,9 +13,15 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+
+        user0 = os.environ.get('user0')
+        user1 = os.environ.get('user1')
+        user2 = os.environ.get('user2')
+        user3 = os.environ.get('user3')
+        pw    = os.environ.get('password')
         
         # [A] 사용자 계정 검증 (예시)
-        if username in ['우정','원일','봄'] and password == '1052':
+        if username in [user0,user1,user2,user3] and password == pw:
             response = make_response(redirect('/'))
             
             # [B] 고유 기기 토큰 생성 및 만료일 지정 (예: 180일)

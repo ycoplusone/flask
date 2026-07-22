@@ -5,6 +5,13 @@ source ~/flask/.venv/bin/activate
 # flask 실행
 python ~/flask/run.py
 
+nohup python ~/flask/run.py &
+
+# ubuntu 프로세
+ps aux | grep [프로세스명]
+kill -9 [PID]
+
+
 # wsl 삭제된 파일 특정폴더로 복원
 find ~/.vscode-server/data/User/History/ -type f \( -name "*.py" -o -name "*.html" -o -name "*.md" \) -exec sh -c 'for f; do dir=$(dirname "$f"); if grep -q "flask" "$dir/entries.json" 2>/dev/null; then echo "$f"; fi; done' _ {} + | xargs -I {} cp {} ~/flask/recovered_files/ 2>/dev/null
 
