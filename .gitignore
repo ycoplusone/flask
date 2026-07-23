@@ -1,1 +1,7 @@
+# Python 가상환경 폴더 제외
+venv/
+.venv/
+__pycache__/
+*.pyc
+
 .env
