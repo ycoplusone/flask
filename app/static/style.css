@@ -39,13 +39,28 @@ body { font-family: sans-serif; font-size: 20px; }
 			color: #bdc3c7;
 			text-decoration: none;
 			font-weight: bold;
-			font-size: 15px;
-			padding: 5px 10px;
+      font-size: 15px;
+      padding: 5px 10px;
+      display: inline-flex;
+      align-items: center;
 		}
+    .nav-menu a .icon { margin-right: 8px; font-size: 18px; }
+    .nav-menu a .nav-label { display: inline-block; }
 		.nav-menu a:hover, .nav-menu a.active {
 			color: #ffffff;
 			border-bottom: 2px solid #3498db;
 		}   
+
+/* 작은 화면에서는 텍스트 라벨 숨기고 아이콘만 보이게 함 */
+@media (max-width: 700px) {
+  .nav-menu {
+    gap: 8px;
+    padding: 10px;
+    overflow-x: auto;
+  }
+  .nav-menu a { padding: 6px; font-size: 14px; }
+  .nav-menu a .nav-label { display: none; }
+}
 
 
 /* 툴팁 컨테이너 */
