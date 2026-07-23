@@ -73,7 +73,7 @@ def create_app():
     # api - end
 
     # routes - start
-    from .routes.test import main_bp
+    from .routes.home import main_bp
     app.register_blueprint(main_bp) # test 화면
 
     from .routes.nicon import nicon_bp
