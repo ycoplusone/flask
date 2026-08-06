@@ -1,0 +1,15 @@
+# 가상환경 / 캐시
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# 버전관리 / 문서
+.git/
+.gitignore
+*.md
+doc/
+
+# 비밀값이 담긴 .env는 이미지에 절대 포함하지 않고,
+# 컨테이너 실행 시 env_file/--env-file 로 주입합니다.
+.env

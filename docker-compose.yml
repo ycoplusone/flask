@@ -1,0 +1,31 @@
+services:
+  web:
+    build: .
+    container_name: flask_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    # .env 파일에 SECRET_KEY, DATABASE_URL 등을 정의해두면
+    # 컨테이너 실행 시 환경 변수로 그대로 주입됩니다.
+    env_file:
+      - .env
+
+  # 참고: DATABASE_URL이 외부 MySQL(168.107.55.147)을 가리키고 있어
+  # 별도의 DB 컨테이너는 구성하지 않았습니다.
+  # 로컬 MySQL이 필요하다면 아래 서비스를 참고해 주석을 해제하고
+  # .env의 DATABASE_URL을 mysql+pymysql://<user>:<pw>@db:3306/<dbname> 로 바꾸세요.
+  #
+  # db:
+  #   image: mysql:8.0
+  #   container_name: flask_mysql
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: change-me
+  #     MYSQL_DATABASE: devDB
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #
+  # volumes:
+  #   mysql_data:
