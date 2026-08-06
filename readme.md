@@ -51,6 +51,11 @@ pip install -r requirements.txt
 ## 6. 일자별 작업 내역
 
 *이 섹션에는 각 날짜별 주요 작업 내용, 이슈, 해결 과정 등을 기록합니다.*
+### 2026-08-06
+- **작업:** Docker 배포 환경 구성 (`Dockerfile`, `docker-compose.yml`, `.dockerignore`, `docker-install.sh` 작성).
+- **이슈:** 특이사항 없음
+- **결과:** `./docker-install.sh` 실행으로 이미지 빌드~컨테이너 실행까지 자동화함. gunicorn으로 5000 포트 서비스, `.env`는 `env_file`로 런타임 주입.
+
 ### 2026-08-05
 - **작업:** 신규 팀원 온보딩을 위해 프로젝트 구조/핵심 파일/코드 흐름/실행 방법을 정리한 `ONBOARDING.md` 작성.
 - **이슈:** 특이사항 없음
