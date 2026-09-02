@@ -179,7 +179,7 @@
                             검색어
                             <span class="tip-box">
                                 QR검출(4) / 단어 검출(2) / 설명 검출(1)<br>
-                                (상세 QR검출(4) / 상세 단어 검출(2))
+                                (ai(16) / 상세 QR검출(4) / 상세 단어 검출(2))
                             </span>
                         </div>
                     </th>
@@ -206,7 +206,7 @@
                         </td>
                         <td>
                             <div class="tip-container">
-                                {{ row.has_qr }}/{{ row.has_text_survey }}/{{ row.has_text_satisfaction }}({{ row.detail_qr }}/{{ row.detail_txt }})
+                                {{ row.has_qr }}/{{ row.has_text_survey }}/{{ row.has_text_satisfaction }}({{ row.detail_ai }}/{{ row.detail_qr }}/{{ row.detail_txt }})
                                 <span class="tip-box">{{ row.words or '' }}</span>
                             </div>
                         </td>

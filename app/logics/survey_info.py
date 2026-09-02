@@ -37,19 +37,20 @@ def get_survey_table_rows(is_verified: str):
     table_sql = text("""
         SELECT
             (has_qr * 4 + has_text_survey * 2 + has_text_satisfaction * 1)
-            + (detail_qr * 4 + detail_txt * 2)
+            + (detail_qr * 4 + detail_txt * 2 + detail_ai *16)
             + (CASE WHEN words IS NULL THEN 0 ELSE (CHAR_LENGTH(words) - CHAR_LENGTH(REPLACE(words, ',', ''))) + 1 END) AS sort_key,
             CASE WHEN words IS NULL THEN 0 ELSE (CHAR_LENGTH(words) - CHAR_LENGTH(REPLACE(words, ',', ''))) + 1 END AS word_cnt,
             has_qr * 4 + has_text_survey * 2 + has_text_satisfaction * 1 AS score,
-            detail_qr * 4 + detail_txt * 2 AS ex_score,
+            detail_qr * 4 + detail_txt * 2 + detail_ai *16 AS ex_score,
             url,
             collection_dt,
-            description,
+            case when detail_comment is not null then detail_comment else description end as description,
             has_qr * 4 AS has_qr,
             has_text_survey * 2 AS has_text_survey,
             has_text_satisfaction * 1 AS has_text_satisfaction,
             detail_qr * 4 AS detail_qr,
             detail_txt * 2 AS detail_txt,
+            detail_ai * 16 AS detail_ai,
             is_verified,
             words
         FROM nicon_survey_collection
