@@ -55,11 +55,12 @@ def get_survey_table_rows(is_verified: str):
             words
         FROM nicon_survey_collection
         WHERE 1=1 
-	and (
-		 (has_qr *4 + has_text_survey *2 + has_text_satisfaction *1)
-		+ (detail_qr *4 + detail_txt *2 + detail_ai*8)
-		+ ( case when words is null then 0 else (CHAR_LENGTH(words) - CHAR_LENGTH(REPLACE(words, ',', '')))+1 end )
-	) > 5
+        and detail_comment  not like '없음|%'
+        and (
+            (has_qr *4 + has_text_survey *2 + has_text_satisfaction *1)
+            + (detail_qr *4 + detail_txt *2 + detail_ai*8)
+            + ( case when words is null then 0 else (CHAR_LENGTH(words) - CHAR_LENGTH(REPLACE(words, ',', '')))+1 end )
+        ) > 5
 	""" + ' AND '.join(where_clauses) + """
         ORDER BY 1 DESC, 2 DESC, 3 DESC, collection_dt DESC
     """)
