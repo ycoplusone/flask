@@ -90,3 +90,8 @@ pip install -r requirements.txt
 - **작업:** flask 프로젝트 생성
 - **이슈:** 기존 wsl 환경에 구축
 - **결과:** app.py 실행시 이상 없이 동작 한다.
+
+### 2026-09-07
+- **작업:** detail_ai 컬럼 추가로 화면과 로직 수정
+- **이슈:** 오류 발생으로 수정
+- **결과:** survey_info.py 수정

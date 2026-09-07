@@ -28,7 +28,7 @@ def update_survey_all_verified():
 
 def get_survey_table_rows(is_verified: str):
     params = {}
-    where_clauses = ["collection_dt >= NOW() - INTERVAL 10 DAY"]
+    where_clauses = ["and collection_dt >= NOW() - INTERVAL 10 DAY"]
 
     if is_verified != 'all':
         where_clauses.append('is_verified = :is_verified')
