@@ -22,7 +22,7 @@ def create_app():
     @app.before_request
     def check_device_auth():
         # 로그인 페이지나 정적 파일(CSS 등) 접근 시에는 체크 건너뛰기
-        if request.endpoint in ['loging_bp.login', 'static']:
+        if request.endpoint in ['loging_bp.login', 'static','textCatch.receive_message']:
             return
 
         # 브라우저 쿠키에서 device_token 가져오기
@@ -102,6 +102,9 @@ def create_app():
 
     from .routes.login import loging_bp
     app.register_blueprint(loging_bp) # 로그인 화면
+
+    from .routes.textCatch import main_bp as textCatch_bp
+    app.register_blueprint(textCatch_bp) # textCatch_bp 등록
 
     # routes - end
 
