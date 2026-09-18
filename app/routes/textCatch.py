@@ -14,7 +14,23 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @main_bp.route('/api/sms-receiver', methods=['POST'])
 def receive_message():
-# 1. 텍스트 메타데이터 수신
+    '''
+    REM 텍스트만 전송
+    curl -X POST http://localhost:5000/api/sms-receiver ^
+    -F "sender=01012345678" ^
+    -F "receiver=01087654321" ^
+    -F "message=안녕하세요" ^
+    -F "timestamp=2024-01-15T10:30:00"
+
+    REM 이미지 포함 전송 (MMS)
+    curl -X POST http://localhost:5000/api/sms-receiver ^
+    -F "sender=01012345678" ^
+    -F "receiver=01087654321" ^
+    -F "message=사진입니다" ^
+    -F "timestamp=2024-01-15T10:30:00" ^
+    -F "image=@C:\Users\DLIVE\Documents\cat.png"    
+    '''
+    # 1. 텍스트 메타데이터 수신
     sender          = request.form.get('sender')    #수신자
     receiver        = request.form.get('receiver')   #발신자
     message_body    = request.form.get('message')   #메시지 내용
