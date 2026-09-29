@@ -11,7 +11,11 @@ from app.logics.textCatch import setTextCatch
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
 
-UPLOAD_FOLDER = './received_images'
+# 업로드 폴더는 git 저장소 바깥(프로젝트 루트의 상위 폴더)에 둡니다.
+# CI/CD가 flask 폴더를 삭제 후 git에서 다시 받아도 수신 이미지가 유지됩니다.
+# .env의 UPLOAD_FOLDER로 절대경로 지정 시 그 값을 우선 사용합니다. (예: /data/received_images)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # /home/dlive/flask
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or os.path.join(os.path.dirname(PROJECT_ROOT), 'received_images')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @main_bp.route('/api/sms-receiver', methods=['POST'])
