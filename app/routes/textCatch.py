@@ -1,12 +1,12 @@
 import os
 import base64
 import mimetypes
-from flask import Blueprint, render_template,Flask, request, jsonify
+from flask import Blueprint, render_template,Flask, request, jsonify, send_from_directory, abort
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from app.logics.textCatch import setTextCatch
+from app.logics.textCatch import setTextCatch, getTextCatchList
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
@@ -135,6 +135,51 @@ def TextCatch():
         print(f"첨부 이미지: {image_filename}")
 
     # TODO: DB 입력 처리
-    setTextCatch(sender, receiver, message_body, received_time, image_filename)
+    # image_filename이 None이면 f-string INSERT에서 문자열 'None'으로 저장되므로 빈 문자열로 전달
+    setTextCatch(sender, receiver, message_body, received_time, image_filename or '')
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
+
+
+@main_bp.route('/textcatch', methods=['GET'])
+def textCatchList():
+    """수신 메시지 목록 화면 (기본 조회 조건: base_dt BETWEEN D-8 AND D-1)"""
+    # 1. 기본 조회 기간 계산 (D-8 ~ D-1)
+    today = datetime.now()
+    default_start = (today - timedelta(days=8)).strftime('%Y%m%d')
+    default_end = (today - timedelta(days=1)).strftime('%Y%m%d')
+
+    # 2. 검색 조건 수신 (없으면 기본값) - base_dt가 varchar(8)이므로 '-' 제거해 YYYYMMDD로 맞춤
+    start_dt = (request.args.get('start_dt') or default_start).replace('-', '').strip()
+    end_dt = (request.args.get('end_dt') or default_end).replace('-', '').strip()
+    sender = (request.args.get('sender') or '').strip()
+    keyword = (request.args.get('keyword') or '').strip()
+
+    # 시작일이 종료일보다 크면 서로 교환
+    if start_dt > end_dt:
+        start_dt, end_dt = end_dt, start_dt
+
+    # 3. 목록 조회
+    list_rows = getTextCatchList(start_dt, end_dt, sender, keyword)
+
+    # 4. 화면 전달 (date input은 YYYY-MM-DD 형식이 필요하므로 변환값도 함께 전달)
+    return render_template(
+        'textcatch/textcatch_list.html',
+        list_rows=list_rows,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        start_dt_view=f"{start_dt[0:4]}-{start_dt[4:6]}-{start_dt[6:8]}",
+        end_dt_view=f"{end_dt[0:4]}-{end_dt[4:6]}-{end_dt[6:8]}",
+        sender=sender,
+        keyword=keyword,
+    )
+
+
+@main_bp.route('/textcatch/image/<filename>')
+def textCatchImage(filename):
+    """업로드 폴더(저장소 바깥)에 저장된 수신 이미지를 화면에 보여주기 위한 서빙용 라우트"""
+    safe_name = secure_filename(filename)
+    if not safe_name:
+        abort(404)
+    return send_from_directory(UPLOAD_FOLDER, safe_name)
     
+
