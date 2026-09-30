@@ -18,11 +18,17 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     received_time   = request.form.get('timestamp', datetime.now().isoformat()) #수신 시간 (없으면 현재 시간 사용)    
     """
     # 예시: 텍스트 수신 관련 설정을 DB에 저장
-    sql_query = text(f"""
+    #sql_query = text(f"""
+    #    INSERT INTO devDB.received_messages( sender, receiver, message_body, image_filename, received_at)
+    #    VALUES( '{sender}', '{receiver}', '{message_body}', '{image_filename}', '{received_time}' );
+    #""")
+    sql_query = """
         INSERT INTO devDB.received_messages( sender, receiver, message_body, image_filename, received_at)
-        VALUES( '{sender}', '{receiver}', '{message_body}', '{image_filename}', '{received_time}' );
-    """)
-    db.session.execute(sql_query)
+        VALUES (%s, %s, %s, %s, %s);
+    """
+
+    
+    db.session.execute(sql_query, (sender, receiver, message_body, image_filename or "", received_time))
     db.session.commit()
 
 
