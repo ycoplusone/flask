@@ -38,7 +38,7 @@ def receive_message():
     # 1. 텍스트 메타데이터 수신
     sender          = request.form.get('sender')    #수신자
     receiver        = request.form.get('receiver')   #발신자
-    message_body    = request.form.get('message').replace("'", "")   #메시지 내용
+    message_body    = request.form.get('message', '')   #메시지 내용
     received_time   = request.form.get('timestamp', datetime.now().isoformat()) #수신 시간 (없으면 현재 시간 사용)
     
     # 2. 이미지 파일 처리 (MMS의 경우)
