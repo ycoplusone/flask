@@ -30,15 +30,16 @@ def create_app():
 
         if token:
             # MySQL DB에서 해당 토큰이 존재하고, 만료시간이 지나지 않았는지 확인
-            sql = f"""
+            # 쿠키값을 SQL에 직접 넣으면 주입 위험이 있어 바인딩 파라미터로 전달
+            sql = """
             SELECT *
             FROM user_devices
-            WHERE device_token = '{token}'
+            WHERE device_token = :token
             AND expires_at > NOW()
             LIMIT 1
             """
 
-            result = db.session.execute(text(sql))
+            result = db.session.execute(text(sql), {'token': token})
             device_record = [dict(row) for row in result.mappings()]
 
             # 유효한 기기 토큰이 DB에 있으면 통과 (자동 로그인 성립)
