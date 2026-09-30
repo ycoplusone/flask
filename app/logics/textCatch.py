@@ -1,11 +1,10 @@
 import os
+import zipfile
 from io import BytesIO
 
 from sqlalchemy import text
 from openpyxl import Workbook
-from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from PIL import Image as PILImage
 
 from app import db
 
@@ -70,20 +69,17 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', keyword: str 
     return [dict(row) for row in result.mappings()]
 
 
-def makeTextCatchExcel(list_rows: list, upload_folder: str):
+def makeTextCatchExcel(list_rows: list):
     """
     수신 메시지 목록을 엑셀(xlsx)로 변환해 BytesIO로 반환.
-    list_rows     : getTextCatchList() 결과
-    upload_folder : 첨부 이미지가 저장된 폴더 (셀에 이미지를 직접 삽입하기 위해 사용)
+    이미지 컬럼은 제외한다. (이미지는 makeTextCatchImageZip으로 별도 다운로드)
+    list_rows : getTextCatchList() 결과
     """
     wb = Workbook()
     ws = wb.active
     ws.title = '수신메시지'
 
-    # 첨부 이미지는 원본 크기로 들어가므로 가장 오른쪽 컬럼에 배치
-    headers = ['ID', '구분', '발신번호', '수신번호', '메시지 내용', '수신 시간', '기준일', '첨부 이미지']
-    image_col = len(headers)          # 8 = H열
-    image_col_letter = 'H'
+    headers = ['ID', '구분', '발신번호', '수신번호', '메시지 내용', '수신 시간', '기준일']
     ws.append(headers)
 
     # 헤더 스타일
@@ -95,15 +91,11 @@ def makeTextCatchExcel(list_rows: list, upload_folder: str):
         cell.alignment = Alignment(horizontal='center', vertical='center')
         cell.border = Border(*[Side(style='thin', color='DDDDDD')] * 4)
 
-    # 컬럼 너비 (H열은 이미지 원본 크기에 맞춰 뒤에서 다시 계산)
+    # 컬럼 너비
     for col, width in zip('ABCDEFG', [8, 8, 16, 18, 60, 20, 12]):
         ws.column_dimensions[col].width = width
 
     ws.freeze_panes = 'A2'
-
-    # openpyxl은 저장 시점에 이미지 스트림을 읽으므로 참조를 유지해야 함
-    image_buffers = []
-    max_image_w = 0  # 삽입된 이미지 중 가장 큰 너비(px) - 컬럼 너비 계산용
 
     for idx, row in enumerate(list_rows, start=2):
         image_filename = row.get('image_filename') or ''
@@ -124,46 +116,42 @@ def makeTextCatchExcel(list_rows: list, upload_folder: str):
                 wrap_text=(col_idx == 5),
             )
 
-        row_height = 18
-
-        # 첨부 이미지를 원본 크기 그대로 삽입 (파일이 없으면 파일명만 텍스트로 표기)
-        image_path = os.path.join(upload_folder, image_filename) if image_filename else ''
-        if image_path and os.path.isfile(image_path):
-            try:
-                with PILImage.open(image_path) as im:
-                    src_w, src_h = im.size
-                    excel_format = os.path.splitext(image_filename)[1].lower() in ('.png', '.jpg', '.jpeg', '.gif')
-
-                    if excel_format:
-                        # 원본 파일을 그대로 삽입 (축소/재인코딩 없음)
-                        xl_img = XLImage(image_path)
-                    else:
-                        # 엑셀이 지원하지 않는 포맷만 크기 유지한 채 PNG로 변환
-                        if im.mode not in ('RGB', 'RGBA', 'L'):
-                            im = im.convert('RGB')
-                        buffer = BytesIO()
-                        im.save(buffer, format='PNG')
-                        buffer.seek(0)
-                        image_buffers.append(buffer)
-                        xl_img = XLImage(buffer)
-
-                ws.add_image(xl_img, f'{image_col_letter}{idx}')
-
-                # 원본 크기가 셀에 다 보이도록 행 높이 확보 (1px = 0.75pt)
-                row_height = max(row_height, src_h * 0.75 + 4)
-                max_image_w = max(max_image_w, src_w)
-            except Exception as e:
-                print(f"엑셀 이미지 삽입 실패({image_filename}): {e}")
-                ws.cell(row=idx, column=image_col, value=image_filename)
-        elif image_filename:
-            ws.cell(row=idx, column=image_col, value=f"{image_filename} (파일 없음)")
-
-        ws.row_dimensions[idx].height = row_height
-
-    # 가장 큰 이미지가 다 보이도록 이미지 컬럼 너비 설정 (엑셀 너비 1 ≈ 7px)
-    ws.column_dimensions[image_col_letter].width = max(16, max_image_w / 7 + 2)
-
     output = BytesIO()
     wb.save(output)
     output.seek(0)
     return output
+
+
+def makeTextCatchImageZip(list_rows: list, upload_folder: str):
+    """
+    조회된 목록의 첨부 이미지를 ZIP으로 묶어 (BytesIO, 담긴 파일 수)로 반환.
+    list_rows     : getTextCatchList() 결과
+    upload_folder : 첨부 이미지가 저장된 폴더
+    """
+    output = BytesIO()
+    added_names = set()
+    file_count = 0
+
+    # 이미지(jpg/png)는 이미 압축된 포맷이므로 다시 압축하지 않고 저장만 한다
+    with zipfile.ZipFile(output, 'w', zipfile.ZIP_STORED) as zf:
+        for row in list_rows:
+            image_filename = row.get('image_filename') or ''
+            if not image_filename:
+                continue
+
+            image_path = os.path.join(upload_folder, image_filename)
+            if not os.path.isfile(image_path):
+                print(f"ZIP 대상 이미지 없음: {image_filename}")
+                continue
+
+            # 파일명이 겹치면 ID를 앞에 붙여 구분
+            zip_name = image_filename
+            if zip_name in added_names:
+                zip_name = f"{row.get('id')}_{image_filename}"
+
+            zf.write(image_path, zip_name)
+            added_names.add(zip_name)
+            file_count += 1
+
+    output.seek(0)
+    return output, file_count
