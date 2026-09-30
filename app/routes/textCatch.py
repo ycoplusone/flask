@@ -1,12 +1,12 @@
 import os
 import base64
 import mimetypes
-from flask import Blueprint, render_template,Flask, request, jsonify, send_from_directory, abort
+from flask import Blueprint, render_template,Flask, request, jsonify, send_from_directory, send_file, abort
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
-from app.logics.textCatch import setTextCatch, getTextCatchList
+from app.logics.textCatch import setTextCatch, getTextCatchList, makeTextCatchExcel
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
@@ -181,5 +181,36 @@ def textCatchImage(filename):
     if not safe_name:
         abort(404)
     return send_from_directory(UPLOAD_FOLDER, safe_name)
+
+
+@main_bp.route('/textcatch/excel', methods=['GET'])
+def textCatchExcel():
+    """현재 조회 조건의 목록을 이미지 포함 엑셀(xlsx)로 다운로드"""
+    # 1. 목록 화면과 동일한 조회 조건 사용 (기본 D-8 ~ D-1)
+    today = datetime.now()
+    default_start = (today - timedelta(days=8)).strftime('%Y%m%d')
+    default_end = (today - timedelta(days=1)).strftime('%Y%m%d')
+
+    start_dt = (request.args.get('start_dt') or default_start).replace('-', '').strip()
+    end_dt = (request.args.get('end_dt') or default_end).replace('-', '').strip()
+    sender = (request.args.get('sender') or '').strip()
+    keyword = (request.args.get('keyword') or '').strip()
+
+    if start_dt > end_dt:
+        start_dt, end_dt = end_dt, start_dt
+
+    # 2. 조회 후 엑셀 생성
+    list_rows = getTextCatchList(start_dt, end_dt, sender, keyword)
+    excel_file = makeTextCatchExcel(list_rows, UPLOAD_FOLDER)
+
+    # 3. 파일명: 조회기간 + 다운로드 시각
+    download_name = f"수신메시지_{start_dt}_{end_dt}_{today.strftime('%Y%m%d%H%M%S')}.xlsx"
+
+    return send_file(
+        excel_file,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=download_name,
+    )
     
 
