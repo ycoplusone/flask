@@ -36,12 +36,16 @@
 .sticky-table td:nth-child(3) {
     width: 25%;
 }
+
+@media (max-width: 700px) {
+    .table-wrap { max-height: none; overflow: visible; border: none; background: transparent; }
+    .sticky-table { table-layout: auto; }
+    .sticky-table td:nth-child(3) { width: 100%; }
+}
 </style>
 
 <div class="container py-4">
-    <div class="text-mb-4 " style="font-size: 48px;">        
-       ✨니콘 현황   
-    </div>
+    <h2 class="page-title">✨니콘 현황</h2>
 
     
 
@@ -52,7 +56,7 @@
     {% endif %}
 
     <div class="table-wrap">
-        <table class="sticky-table">
+        <table class="sticky-table table-cards">
             <thead>
                 <tr>
                     <th>구분</th>
@@ -71,16 +75,16 @@
                 {% if rows %}
                     {% for row in rows %}
                     <tr>
-                        <td>{{ row.div_nm }}</td>
-                        <td>{{ row.brand }}</td>
-                        <td>{{ row.prod }}</td>
-                        <td>{{ row.fold_date }}</td>
-                        <td>{{ row.fold_cnt }}</td>
-                        <td>{{ row.bal_qty }}</td>
-                        <td>{{ row.suc_qty }}</td>
-                        <td>{{ row.chk_qty }}</td>
-                        <td>{{ row.sale_qty }}</td>
-                        <td>{{ row.c_date }}</td>
+                        <td data-label="구분">{{ row.div_nm }}</td>
+                        <td data-label="브랜드">{{ row.brand }}</td>
+                        <td data-label="상품명" class="cell-title">{{ row.prod }}</td>
+                        <td data-label="생성일(old)">{{ row.fold_date }}</td>
+                        <td data-label="폴더수">{{ row.fold_cnt }}</td>
+                        <td data-label="잔여건">{{ row.bal_qty }}</td>
+                        <td data-label="완료건">{{ row.suc_qty }}</td>
+                        <td data-label="이상건">{{ row.chk_qty }}</td>
+                        <td data-label="처리건">{{ row.sale_qty }}</td>
+                        <td data-label="기록일">{{ row.c_date }}</td>
                     </tr>
                     {% endfor %}
                 {% else %}

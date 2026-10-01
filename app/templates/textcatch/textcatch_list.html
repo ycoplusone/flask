@@ -2,28 +2,8 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: sans-serif;
-        font-size: 16px;
-    }
-
-    .container {
-        max-width: 1200px;
-        margin: auto;
-        padding: 20px;
-    }
-
-    .page-title {
-        margin-bottom: 6px;
-        font-size: 32px;
-        font-weight: 700;
-        color: #c0392b;
-    }
-
-    .page-subtitle {
-        color: #666;
-        margin-bottom: 24px;
-    }
+    .container { max-width: 1200px; }
+    .page-title { color: #c0392b; }
 
     .search-form {
         display: flex;
@@ -36,56 +16,17 @@
         border: 1px solid #eee;
         border-radius: 6px;
     }
-
     .search-form .field {
         display: flex;
         flex-direction: column;
         gap: 4px;
     }
-
     .search-form label {
         font-size: 13px;
         color: #888;
     }
 
-    .search-form input {
-        padding: 9px 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-
-    .btn-search {
-        background: #e74c3c;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 10px 18px;
-        cursor: pointer;
-        font-weight: bold;
-    }
-
-    .btn-search:hover {
-        background: #c0392b;
-    }
-
-    .btn-reset {
-        background: #95a5a6;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 10px 18px;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-reset:hover {
-        background: #7f8c8d;
-        color: white;
-    }
-
-    .btn-excel {
-        background: #217346;
+    .btn-search, .btn-reset, .btn-excel, .btn-zip {
         color: white;
         border: none;
         border-radius: 4px;
@@ -94,80 +35,31 @@
         font-weight: bold;
         text-decoration: none;
         display: inline-block;
+        text-align: center;
     }
-
-    .btn-excel:hover {
-        background: #1a5c38;
-        color: white;
-    }
-
-    .btn-zip {
-        background: #f39c12;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 10px 18px;
-        cursor: pointer;
-        font-weight: bold;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-zip:hover {
-        background: #d68910;
-        color: white;
-    }
+    .btn-search { background: #e74c3c; }
+    .btn-search:hover { background: #c0392b; }
+    .btn-reset { background: #95a5a6; font-weight: normal; }
+    .btn-reset:hover { background: #7f8c8d; color: white; }
+    .btn-excel { background: #217346; }
+    .btn-excel:hover { background: #1a5c38; color: white; }
+    .btn-zip { background: #f39c12; }
+    .btn-zip:hover { background: #d68910; color: white; }
 
     .list-header {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
         margin-bottom: 10px;
     }
-
     .list-header .actions {
         display: flex;
         gap: 8px;
     }
 
-    .message-box {
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        background: #fdecea;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-        border-radius: 6px;
-    }
-
-    .result-count {
-        color: #666;
-        font-size: 14px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-    }
-
-    th, td {
-        padding: 10px;
-        border: 1px solid #eee;
-        text-align: center;
-        word-break: break-word;
-        white-space: normal;
-        font-size: 14px;
-    }
-
-    th {
-        background: #f9f9f9;
-        color: #888;
-    }
-
-    td.text-left {
-        text-align: left;
-    }
+    .msg-table { table-layout: fixed; font-size: 14px; }
 
     .thumb {
         max-width: 90px;
@@ -175,31 +67,30 @@
         border: 1px solid #ddd;
         border-radius: 4px;
     }
+    .type-mms { color: #e67e22; font-weight: bold; }
+    .type-sms { color: #3498db; font-weight: bold; }
+    .no-data { padding: 40px; color: #999; }
 
-    .type-mms {
-        color: #e67e22;
-        font-weight: bold;
-    }
-
-    .type-sms {
-        color: #3498db;
-        font-weight: bold;
-    }
-
-    .no-data {
-        padding: 40px;
-        color: #999;
+    @media (max-width: 700px) {
+        .search-form { padding: 12px; }
+        .search-form .field { flex: 1 1 calc(50% - 5px); min-width: 0; }
+        .search-form .field input { width: 100%; }
+        .btn-search, .btn-reset { flex: 1 1 calc(50% - 5px); }
+        .list-header .actions { width: 100%; }
+        .list-header .actions a { flex: 1 1 0; padding: 10px 8px; }
+        .msg-table { table-layout: auto; }
+        .thumb { max-width: 160px; max-height: 160px; }
     }
 </style>
 
-<div class="container">
+<div class="container py-4">
     <h2 class="page-title">📩 수신 메시지 조회</h2>
     <p class="page-subtitle">SMS / MMS 수신 내역을 기준일(base_dt) 범위로 조회합니다. 기본 조건은 D-8 ~ D-1 입니다.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, msg in messages %}
-          <div class="message-box">{{ msg }}</div>
+          <div class="message-box is-error">{{ msg }}</div>
         {% endfor %}
       {% endif %}
     {% endwith %}
@@ -243,7 +134,7 @@
         </div>
     </div>
 
-    <table>
+    <table class="msg-table table-cards">
         <colgroup>
             <col style="width: 70px;">
             <col style="width: 80px;">
@@ -268,18 +159,18 @@
             {% if list_rows %}
                 {% for row in list_rows %}
                 <tr>
-                    <td>{{ row.id }}</td>
-                    <td>
+                    <td data-label="ID">{{ row.id }}</td>
+                    <td data-label="구분">
                         {% if row.image_filename %}
                             <span class="type-mms">MMS</span>
                         {% else %}
                             <span class="type-sms">SMS</span>
                         {% endif %}
                     </td>
-                    <td>{{ row.sender }}</td>
-                    <td>{{ row.receiver }}</td>
-                    <td class="text-left">{{ row.message_body }}</td>
-                    <td>
+                    <td data-label="발신번호">{{ row.sender }}</td>
+                    <td data-label="수신번호">{{ row.receiver }}</td>
+                    <td class="text-left cell-block" data-label="메시지 내용">{{ row.message_body }}</td>
+                    <td data-label="첨부 이미지">
                         {% if row.image_filename %}
                             <a href="/textcatch/image/{{ row.image_filename }}" target="_blank">
                                 <img class="thumb" src="/textcatch/image/{{ row.image_filename }}" alt="{{ row.image_filename }}">
@@ -288,7 +179,7 @@
                             -
                         {% endif %}
                     </td>
-                    <td>{{ row.received_at }}</td>
+                    <td data-label="수신 시간">{{ row.received_at }}</td>
                 </tr>
                 {% endfor %}
             {% else %}

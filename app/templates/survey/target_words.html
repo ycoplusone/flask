@@ -2,44 +2,7 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: sans-serif;
-        font-size: 16px;
-    }
-
-    .container {
-        max-width: 1000px;
-        margin: auto;
-        padding: 20px;
-    }
-
-    
-
-    .nav-menu a:hover,
-    .nav-menu a.active {
-        color: #ffffff;
-        border-bottom: 2px solid #3498db;
-    }
-
-    .page-title {
-        margin-bottom: 24px;
-        font-size: 30px;
-        font-weight: 700;
-    }
-
-    .add-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .add-form input[type="text"] {
-        flex: 1 1 320px;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
+    .container { max-width: 1000px; }
 
     .add-form button {
         background: #3498db;
@@ -50,51 +13,7 @@
         cursor: pointer;
         font-weight: bold;
     }
-
-    .add-form button:hover {
-        background: #2874a6;
-    }
-
-    .message-box {
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        background: #e9f7ef;
-        border: 1px solid #bee5d3;
-        color: #155724;
-        border-radius: 6px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-    }
-
-    th, td {
-        padding: 12px;
-        border: 1px solid #eee;
-        text-align: center;
-        word-break: break-word;
-        white-space: normal;
-    }
-
-    th {
-        background: #f4f4f4;
-    }
-
-    td.text-left {
-        text-align: left;
-    }
-
-    .status-y {
-        color: green;
-        font-weight: bold;
-    }
-
-    .status-n {
-        color: red;
-        font-weight: bold;
-    }
+    .add-form button:hover { background: #2874a6; }
 
     .btn-toggle,
     .btn-del {
@@ -102,28 +21,16 @@
         border-radius: 4px;
         color: white;
         cursor: pointer;
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 8px 14px;
+        font-size: 14px;
     }
-
-    .btn-toggle {
-        background: #f39c12;
-    }
-
-    .btn-toggle:hover {
-        background: #d68910;
-    }
-
-    .btn-del {
-        background: #e74c3c;
-    }
-
-    .btn-del:hover {
-        background: #c0392b;
-    }
+    .btn-toggle { background: #f39c12; }
+    .btn-toggle:hover { background: #d68910; }
+    .btn-del { background: #e74c3c; }
+    .btn-del:hover { background: #c0392b; }
 </style>
 
-<div class="container">
+<div class="container py-4">
     <h2 class="page-title">🎯인식 단어 관리</h2>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -142,7 +49,7 @@
         <button type="submit">등록</button>
     </form>
 
-    <table>
+    <table class="table-cards">
         <thead>
             <tr>
                 <th>키워드</th>
@@ -155,14 +62,16 @@
             {% if keywords %}
                 {% for row in keywords %}
                 <tr>
-                    <td class="text-left">{{ row.word }}</td>
-                    <td>
+                    <td class="text-left cell-title" data-label="키워드">{{ row.word }}</td>
+                    <td data-label="사용">
                         <span class="{{ 'status-y' if row.is_use == 'Y' else 'status-n' }}">{{ row.is_use }}</span>
                     </td>
-                    <td style="font-size:12px; color:#888;">{{ row.reg_dt }}</td>
-                    <td>
+                    <td data-label="등록일" style="font-size:13px; color:#888;">{{ row.reg_dt }}</td>
+                    <td data-label="관리">
+                        <div class="cell-actions">
                         <a href="/target_words?toggle_id={{ row.id }}"><button type="button" class="btn-toggle">토글</button></a>
                         <a href="/target_words?delete_id={{ row.id }}" onclick="return confirm('삭제할까요?');"><button type="button" class="btn-del">삭제</button></a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

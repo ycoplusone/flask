@@ -2,22 +2,10 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: sans-serif;
-        font-size: 16px;
-    }
-
-
-    .filter-box select {
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        min-width: 180px;
-    }
-
-    .filter-box button,
-    .btn-done {
-        padding: 10px 10px;
+    .filter-box form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .filter-box select { min-width: 140px; }
+    .filter-box .filter-search button {
+        padding: 10px 14px;
         border: none;
         border-radius: 4px;
         background: #007bff;
@@ -25,111 +13,24 @@
         cursor: pointer;
         font-weight: bold;
     }
+    .filter-box .filter-search button:hover { background: #0056b3; }
+    .filter-box .filter-all { margin-left: auto; }
 
-    .filter-box button:hover,
-    .btn-done:hover {
-        background: #0056b3;
-    }
+    .info-table { table-layout: fixed; }
+    .info-table td.desc { text-align: left; }
 
-    .btn-done {
-        background: #4CAF50;
-    }
-
-    .btn-done:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-    }
-
-    table {
-        border-collapse: collapse;
-        width: 100%;
-        table-layout: fixed;
-    }
-
-    th, td {
-        border: 1px solid #ddd;
-        padding: 10px;
-        text-align: center;
-        word-break: break-word;
-        white-space: normal;
-        overflow-wrap: anywhere;
-    }
-
-    thead tr {
-        background: #f4f4f4;
-    }
-
-    .link-text {
-        background: #FFA500;
-        color: white;
-        padding: 8px 10px;
-        border-radius: 3px;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .link-text:hover {
-        opacity: 0.9;
-    }
-
-    .tip-container {
-        position: relative;
-        display: inline-block;
-        padding: 15px 20px;
-        margin: -15px -20px;
-        cursor: help;
-    }
-
-    .tip-box {
-        visibility: hidden;
-        width: 220px;
-        background-color: #333;
-        color: #fff;
-        text-align: center;
-        border-radius: 4px;
-        padding: 8px;
-        position: absolute;
-        z-index: 10;
-        bottom: 125%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.3s;
-        font-size: 14px;
-        line-height: 1.4;
-    }
-
-    .tip-container:hover .tip-box {
-        visibility: visible;
-        opacity: 1;
-    }
-
-    .tip-box::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        margin-left: -5px;
-        border-width: 5px;
-        border-style: solid;
-        border-color: #333 transparent transparent transparent;
-    }
-
-    .message-box {
-        margin-bottom: 16px;
-        padding: 12px 16px;
-        background: #e9f7ef;
-        border: 1px solid #bee5d3;
-        color: #155724;
-        border-radius: 6px;
+    @media (max-width: 700px) {
+        .info-table { table-layout: auto; }
+        .filter-box .filter-all { margin-left: 0; width: 100%; }
+        .filter-box .filter-all .btn-done { width: 100%; }
+        .filter-box .filter-search { width: 100%; }
+        .filter-box .filter-search select { flex: 1 1 auto; }
     }
 </style>
 
 <div class="container py-4">
 
-    <h2>📊수집 데이터 관리</h2>
-    
-
+    <h2 class="page-title">📊수집 데이터 관리</h2>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -140,7 +41,7 @@
     {% endwith %}
 
     <div class="filter-box">
-        <form method="GET" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; width:100%;">
+        <form method="GET" class="filter-search">
             <label>확인여부:</label>
             <select name="is_verified">
                 <option value="all" {{ 'selected' if is_verified == 'all' else '' }}>전체</option>
@@ -150,22 +51,24 @@
             <button type="submit">조회</button>
         </form>
 
-        <form method="POST" style="margin-left:auto; display:inline;" onsubmit="return confirm('정말로 모든 항목을 일괄 완료 처리하시겠습니까?');">
+        <form method="POST" class="filter-all" onsubmit="return confirm('정말로 모든 항목을 일괄 완료 처리하시겠습니까?');">
             <input type="hidden" name="update_all" value="all">
-            <button type="submit" class="btn-done" style="width:100px">일괄완료</button>
+            <button type="submit" class="btn-done">일괄완료</button>
         </form>
     </div>
 
-    <div style="width:100%; overflow:auto; margin-top: 50px;">
-        <table>
+    <p class="result-count mobile-only" style="margin-top: 20px;">총 <strong>{{ table_rows|length }}</strong>건</p>
+
+    <div class="table-scroll" style="margin-top: 20px;">
+        <table class="info-table table-cards">
             <colgroup>
-                <col style="width:10px">
-                <col style="width:30px">
-                <col style="width:20px">
-                <col style="width:20px">
-                <col style="width:20px">
-                <col style="width:30px">
-                <col style="width:100px">                
+                <col style="width:5%">
+                <col style="width:13%">
+                <col style="width:9%">
+                <col style="width:9%">
+                <col style="width:9%">
+                <col style="width:15%">
+                <col style="width:40%">
             </colgroup>
             <thead>
                 <tr>
@@ -175,7 +78,7 @@
                     <th>점수</th>
                     <th>URL</th>
                     <th>
-                        <div class="tip-container">
+                        <div class="tip-container" tabindex="0">
                             검색어
                             <span class="tip-box">
                                 QR검출(4) / 단어 검출(2) / 설명 검출(1)<br>
@@ -190,27 +93,27 @@
                 {% if table_rows %}
                     {% for row in table_rows %}
                     <tr>
-                        <td>{{ loop.index }}</td>
-                        <td>{{ row.collection_dt }}</td>
-                        <td>
+                        <td data-label="No">{{ loop.index }}</td>
+                        <td data-label="수집일시">{{ row.collection_dt }}</td>
+                        <td data-label="관리">
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="update_url" value="{{ row.url }}">
                                 <button type="submit" class="btn-done" {% if row.is_verified %}disabled{% endif %}>완료</button>
                             </form>
                         </td>
-                        <td>{{ row.score }}({{ row.ex_score }})</td>
-                        <td style="text-align:left;">
+                        <td data-label="점수">{{ row.score }}({{ row.ex_score }})</td>
+                        <td data-label="URL">
                             {% if row.url %}
                                 <a href="{{ row.url }}" target="_blank" class="link-text" onclick="copyUrl(this);">{{ '★링크' if 'instagram' in row.url.lower() else '링크' }}</a>
                             {% endif %}
                         </td>
-                        <td>
-                            <div class="tip-container">
+                        <td data-label="검색어">
+                            <div class="tip-container" tabindex="0">
                                 {{ row.has_qr }}/{{ row.has_text_survey }}/{{ row.has_text_satisfaction }}({{ row.detail_ai }}/{{ row.detail_qr }}/{{ row.detail_txt }})
                                 <span class="tip-box">{{ row.words or '' }}</span>
                             </div>
                         </td>
-                        <td style="text-align:left;">{{ row.description }}</td>
+                        <td class="desc cell-block" data-label="주석">{{ row.description }}</td>
                     </tr>
                     {% endfor %}
                 {% else %}

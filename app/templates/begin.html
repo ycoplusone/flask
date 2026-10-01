@@ -1,11 +1,11 @@
 <!-- 시작 부분 메뉴부분 이다. -->
 <nav class="nav-menu">
 	<a href="/" 		class="{{ 'active' if request.path == '/' 	else '' }}"><span class="icon">🏠</span><span class="nav-label">홈</span></a>
-	<a href="/nicon_sales" 		class="{{ 'active' if request.path == '/nicon_sales' 	else '' }}"><span class="icon">✨</span><span class="nav-label">니콘 현황</span></a>
+	<a href="/textcatch" 	class="{{ 'active' if request.path == '/textcatch' else '' }}"><span class="icon">💬</span><span class="nav-label">텍스트 캐치</span></a>	
 	<a href="/survey_join" 		class="{{ 'active' if request.path == '/survey_join' 	else '' }}"><span class="icon">📢</span><span class="nav-label">참여 통계</span></a>
 	<a href="/survey_info?is_verified=N" 		class="{{ 'active' if request.path == '/survey_info' 	else '' }}"><span class="icon">📊</span><span class="nav-label">수집 데이터 관리</span></a>
 	<a href="/survey_words" 	class="{{ 'active' if request.path == '/survey_words' 	else '' }}"><span class="icon">🔑</span><span class="nav-label">검색 키워드 관리</span></a>
 	<a href="/target_words" 	class="{{ 'active' if request.path == '/target_words' 	else '' }}"><span class="icon">🎯</span><span class="nav-label">인식 단어 관리</span></a>
 	<a href="/exception_list" 	class="{{ 'active' if request.path == '/exception_list' else '' }}"><span class="icon">🧹</span><span class="nav-label">제외 단어 관리</span></a>
-	<a href="/textcatch" 	class="{{ 'active' if request.path == '/textcatch' else '' }}"><span class="icon">💬</span><span class="nav-label">텍스트 캐치</span></a>
+	<a href="/nicon_sales" 		class="{{ 'active' if request.path == '/nicon_sales' 	else '' }}"><span class="icon">✨</span><span class="nav-label">니콘 현황</span></a>	
 </nav>
