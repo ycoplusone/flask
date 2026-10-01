@@ -26,3 +26,17 @@ def get_last7_job_counts():
     """)
     result = db.session.execute(sql)
     return [dict(row) for row in result.mappings()]
+
+def get_last7_text_counts():
+    sql = text("""
+    select 
+    base_dt , count(distinct receiver) rec_cnt ,count(1) cnt
+    from received_messages
+    where base_dt between DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 7 DAY), '%Y%m%d') 
+    and DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 0 DAY), '%Y%m%d')
+    group by base_dt
+    order by base_dt desc
+    """)
+    result = db.session.execute(sql)
+    return [dict(row) for row in result.mappings()]
+
