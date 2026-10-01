@@ -7,17 +7,17 @@
 		</div>
 	</div>
 
-	<div class="row mb-4">
-		<div class="col-md-4">
-			<div class="card">
+	<div class="row mb-1">
+		<div class="col-md-6 col-lg-4 mb-3">
+			<div class="card h-100">
 				<div class="card-body">
 					<h5 class="card-title">잔여 수집 데이터 건수 (최근 10일)</h5>
 					<p class="card-text" style="font-size:32px; font-weight:600;">{{ remaining_count }}</p>
 				</div>
 			</div>
 		</div>
-		<div class="col-md-8">
-			<div class="card">
+		<div class="col-md-6 col-lg-4 mb-3">
+			<div class="card h-100">
 				<div class="card-body">
 					<h5 class="card-title">최근 7일 작업 일별 건수!!!</h5>
 					{% if week_counts %}
@@ -33,6 +33,38 @@
 								{% for r in week_counts %}
 								<tr>
 									<td>{{ r.d }}</td>
+									<td>{{ r.cnt }}</td>
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					{% else %}
+						<p>데이터가 없습니다.</p>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+		<div class="col-md-6 col-lg-4 mb-3">
+			<div class="card h-100">
+				<div class="card-body">
+					<h5 class="card-title">최근 8일 문자 수신 건수</h5>
+					{% if text_counts %}
+					<div style="overflow:auto">
+						<table class="table table-sm">
+							<thead>
+								<tr>
+									<th>일자</th>
+									<th>수신번호 수</th>
+									<th>문자 건수</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for r in text_counts %}
+								{% set d = r.base_dt | string %}
+								<tr>
+									<td>{{ d[4:6] ~ '/' ~ d[6:8] if d|length == 8 else d }}</td>
+									<td>{{ r.rec_cnt }}</td>
 									<td>{{ r.cnt }}</td>
 								</tr>
 								{% endfor %}
