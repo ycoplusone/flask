@@ -6,7 +6,7 @@ from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
-from app.logics.textCatch import setTextCatch, getTextCatchList, makeTextCatchExcel, makeTextCatchImageZip
+from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
@@ -160,6 +160,24 @@ def textCatchList():
         sender=sender,
         keyword=keyword,
     )
+
+
+@main_bp.route('/textcatch/delete', methods=['POST'])
+def textCatchDelete():
+    """선택한 수신 메시지 삭제 (use_yn 'Y' -> 'N' 변경) 후 같은 조회 조건으로 목록 복귀"""
+    ids = [int(v) for v in request.form.getlist('ids') if v.strip().isdigit()]
+
+    if not ids:
+        flash('삭제할 메시지를 선택해 주세요.', 'error')
+    else:
+        deleted = deleteTextCatch(ids)
+        flash(f'{deleted}건을 삭제했습니다.', 'info')
+
+    return redirect(url_for('textCatch.textCatchList',
+                            start_dt=request.form.get('start_dt', ''),
+                            end_dt=request.form.get('end_dt', ''),
+                            sender=request.form.get('sender', ''),
+                            keyword=request.form.get('keyword', '')))
 
 
 @main_bp.route('/textcatch/image/<filename>')

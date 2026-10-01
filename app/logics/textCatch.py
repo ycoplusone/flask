@@ -2,7 +2,7 @@ import os
 import zipfile
 from io import BytesIO
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
@@ -51,7 +51,8 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', keyword: str 
              , created_at
              , base_dt
         FROM received_messages
-        WHERE base_dt BETWEEN :start_dt AND :end_dt        
+        WHERE base_dt BETWEEN :start_dt AND :end_dt
+          AND use_yn = 'Y'
     """
     params = {'start_dt': start_dt, 'end_dt': end_dt}
 
@@ -67,6 +68,27 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', keyword: str 
 
     result = db.session.execute(text(sql), params)
     return [dict(row) for row in result.mappings()]
+
+
+def deleteTextCatch(ids: list) -> int:
+    """
+    수신 메시지 삭제 처리. 실제 DELETE 가 아니라 use_yn 을 'Y' -> 'N' 으로 변경한다.
+    ids : 삭제할 received_messages.id 목록
+    반환 : 변경된 건수
+    """
+    if not ids:
+        return 0
+
+    sql = text("""
+        UPDATE received_messages
+        SET use_yn = 'N'
+        WHERE id IN :ids
+          AND use_yn = 'Y'
+    """).bindparams(bindparam('ids', expanding=True))
+
+    result = db.session.execute(sql, {'ids': ids})
+    db.session.commit()
+    return result.rowcount
 
 
 def makeTextCatchExcel(list_rows: list):
