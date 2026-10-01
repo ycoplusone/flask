@@ -2,50 +2,8 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: sans-serif;
-        font-size: 16px;
-    }
-
-    .container {
-        max-width: 1000px;
-        margin: auto;
-        padding: 20px;
-    }
-
-   
-
-    .nav-menu a:hover,
-    .nav-menu a.active {
-        color: #ffffff;
-        border-bottom: 2px solid #3498db;
-    }
-
-    .page-title {
-        margin-bottom: 6px;
-        font-size: 32px;
-        font-weight: 700;
-        color: #c0392b;
-    }
-
-    .page-subtitle {
-        color: #666;
-        margin-bottom: 24px;
-    }
-
-    .add-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .add-form input[type="text"] {
-        flex: 1 1 320px;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
+    .container { max-width: 1000px; }
+    .page-title { color: #c0392b; }
 
     .btn-add {
         background: #e74c3c;
@@ -56,52 +14,7 @@
         cursor: pointer;
         font-weight: bold;
     }
-
-    .btn-add:hover {
-        background: #c0392b;
-    }
-
-    .message-box {
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        background: #fdecea;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-        border-radius: 6px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-    }
-
-    th, td {
-        padding: 12px;
-        border: 1px solid #eee;
-        text-align: center;
-        word-break: break-word;
-        white-space: normal;
-    }
-
-    th {
-        background: #f9f9f9;
-        color: #888;
-    }
-
-    td.text-left {
-        text-align: left;
-    }
-
-    .status-y {
-        color: #2ecc71;
-        font-weight: bold;
-    }
-
-    .status-n {
-        color: #e74c3c;
-        font-weight: bold;
-    }
+    .btn-add:hover { background: #c0392b; }
 
     .btn-toggle,
     .btn-del {
@@ -109,35 +22,23 @@
         border-radius: 4px;
         color: white;
         cursor: pointer;
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 8px 14px;
+        font-size: 14px;
     }
-
-    .btn-toggle {
-        background: #3498db;
-    }
-
-    .btn-toggle:hover {
-        background: #2980b9;
-    }
-
-    .btn-del {
-        background: #95a5a6;
-    }
-
-    .btn-del:hover {
-        background: #7f8c8d;
-    }
+    .btn-toggle { background: #3498db; }
+    .btn-toggle:hover { background: #2980b9; }
+    .btn-del { background: #95a5a6; }
+    .btn-del:hover { background: #7f8c8d; }
 </style>
 
-<div class="container">
+<div class="container py-4">
     <h2 class="page-title">🧹제외 단어 관리</h2>
     <p class="page-subtitle">URL에 포함된 단어를 기준으로 수집에서 제외할 대상을 관리합니다.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, msg in messages %}
-          <div class="message-box">{{ msg }}</div>
+          <div class="message-box is-error">{{ msg }}</div>
         {% endfor %}
       {% endif %}
     {% endwith %}
@@ -147,7 +48,7 @@
         <button type="submit" class="btn-add">단어 등록</button>
     </form>
 
-    <table>
+    <table class="table-cards">
         <thead>
             <tr>
                 <th>제외 대상 단어</th>
@@ -159,13 +60,15 @@
             {% if list_rows %}
                 {% for row in list_rows %}
                 <tr>
-                    <td class="text-left">{{ row.word }}</td>
-                    <td>
+                    <td class="text-left cell-title" data-label="제외 단어">{{ row.word }}</td>
+                    <td data-label="사용 여부">
                         <span class="{{ 'status-y' if row.is_use == 'Y' else 'status-n' }}">{{ row.is_use }}</span>
                     </td>
-                    <td>
+                    <td data-label="관리">
+                        <div class="cell-actions">
                         <a href="/exception_list?toggle_word={{ row.word }}"><button type="button" class="btn-toggle">토글</button></a>
                         <a href="/exception_list?delete_word={{ row.word }}" onclick="return confirm('삭제하시겠습니까?');"><button type="button" class="btn-del">삭제</button></a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
