@@ -79,7 +79,16 @@ def TextCatch():
     # 1. JSON 파싱
     payload = request.get_json(silent=True)
     if not payload:
+        print(f"[textcatch] JSON 파싱 실패, raw body: {request.get_data(as_text=True)[:500]}")
         return jsonify({"status": "error", "message": "Invalid JSON body"}), 400
+
+    # 입력받은 모든 파라미터/값 출력 (이미지는 제외)
+    print("[textcatch] ===== 수신 파라미터 =====")
+    for key, value in payload.items():
+        if key == 'images':
+            continue
+        print(f"  {key} = {value!r}")
+    print("[textcatch] ========================")
 
     # 2. 메타데이터 수신
     msg_type        = payload.get('type', 'SMS')        # SMS / MMS
