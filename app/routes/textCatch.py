@@ -79,13 +79,23 @@ def TextCatch():
     # 1. JSON 파싱
     payload = request.get_json(silent=True)
     if not payload:
+        print(f"[textcatch] JSON 파싱 실패, raw body: {request.get_data(as_text=True)[:500]}")
         return jsonify({"status": "error", "message": "Invalid JSON body"}), 400
+
+    # 입력받은 모든 파라미터/값 출력 (이미지는 제외)
+    print("[textcatch] ===== 수신 파라미터 =====")
+    for key, value in payload.items():
+        if key == 'images':
+            continue
+        print(f"  {key} = {value!r}")
+    print("[textcatch] ========================")
 
     # 2. 메타데이터 수신
     msg_type        = payload.get('type', 'SMS')        # SMS / MMS
     sender          = payload.get('sender')             # 발신자
     receiver        = payload.get('receiver')           # 수신자
     message_body    = payload.get('body', '')           # 메시지 내용
+    device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
     timestamp       = payload.get('timestamp')          # 수신 시간 (epoch milliseconds)
 
     if not sender or not receiver:
@@ -130,13 +140,14 @@ def TextCatch():
 
     # 5. 데이터 확인 (DB 적재는 추후 처리)
     print(f"[{received_time}] ({msg_type}) From: {sender} -> To: {receiver}")
+    print(f"device_id: {device_id}")
     print(f"내용: {message_body}")
     if image_filename:
         print(f"첨부 이미지: {image_filename}")
 
     # TODO: DB 입력 처리
     # image_filename이 None이면 f-string INSERT에서 문자열 'None'으로 저장되므로 빈 문자열로 전달
-    setTextCatch(sender, receiver, message_body, received_time, image_filename or '')
+    setTextCatch(sender, receiver, message_body, received_time,device_id ,image_filename or '' )
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
 
