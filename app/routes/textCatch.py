@@ -86,6 +86,7 @@ def TextCatch():
     sender          = payload.get('sender')             # 발신자
     receiver        = payload.get('receiver')           # 수신자
     message_body    = payload.get('body', '')           # 메시지 내용
+    device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
     timestamp       = payload.get('timestamp')          # 수신 시간 (epoch milliseconds)
 
     if not sender or not receiver:
@@ -136,7 +137,7 @@ def TextCatch():
 
     # TODO: DB 입력 처리
     # image_filename이 None이면 f-string INSERT에서 문자열 'None'으로 저장되므로 빈 문자열로 전달
-    setTextCatch(sender, receiver, message_body, received_time, image_filename or '')
+    setTextCatch(sender, receiver, message_body, received_time,device_id ,image_filename or '' )
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
 
