@@ -131,6 +131,7 @@ def TextCatch():
 
     # 5. 데이터 확인 (DB 적재는 추후 처리)
     print(f"[{received_time}] ({msg_type}) From: {sender} -> To: {receiver}")
+    print(f"device_id: {device_id}")
     print(f"내용: {message_body}")
     if image_filename:
         print(f"첨부 이미지: {image_filename}")
