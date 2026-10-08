@@ -44,7 +44,7 @@ def get_last7_text_counts():
 def upsert_received_info():
     # 마지막 처리(created_dt) 후 1시간이 지나지 않았으면 skip (테이블이 비어있으면 NULL → 수행)
     chk_sql = text("""
-    select max(created_dt) >= NOW() - INTERVAL 1 HOUR as is_recent
+    select min(created_dt) >= NOW() - INTERVAL 1 HOUR as is_recent
     from received_info
     """)
     if db.session.execute(chk_sql).scalar():
