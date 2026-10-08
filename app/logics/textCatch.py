@@ -1,5 +1,4 @@
 import os
-from tkinter import INSERT
 import zipfile
 from io import BytesIO
 
