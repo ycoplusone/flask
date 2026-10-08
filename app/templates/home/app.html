@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
+<style>
+	tr.chk-fail td { color: #dc3545 !important; font-weight: 600; }
+</style>
 <div class="container py-4">
 	<div class="row mb-3">
 		<div class="col-12">
@@ -66,6 +69,48 @@
 									<td>{{ d[4:6] ~ '/' ~ d[6:8] if d|length == 8 else d }}</td>
 									<td>{{ r.rec_cnt }}</td>
 									<td>{{ r.cnt }}</td>
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					{% else %}
+						<p>데이터가 없습니다.</p>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row mb-1">
+		<div class="col-12 mb-3">
+			<div class="card h-100">
+				<div class="card-body">
+					<h5 class="card-title">SMS/MMS 수신 체크 (최근 18시간)</h5>
+					{% if received_info %}
+					<div style="overflow:auto">
+						<table class="table table-sm">
+							<thead>
+								<tr>
+									<th>기기ID</th>
+									<th>수신번호</th>
+									<th>전체</th>
+									<th>SMS</th>
+									<th>MMS</th>
+									<th>SMS 최종수신</th>
+									<th>MMS 최종수신</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for r in received_info %}
+								<tr{% if r.tot_chk == 'F' %} class="chk-fail"{% endif %}>
+									<td>{{ r.device_id }}</td>
+									<td>{{ r.receiver }}</td>
+									<td>{{ r.tot_chk }}</td>
+									<td>{{ r.sms_chk }}</td>
+									<td>{{ r.mmm_chk }}</td>
+									<td>{{ r.sms_dt if r.sms_dt and r.sms_dt.year > 1999 else '-' }}</td>
+									<td>{{ r.mms_dt if r.mms_dt and r.mms_dt.year > 1999 else '-' }}</td>
 								</tr>
 								{% endfor %}
 							</tbody>
