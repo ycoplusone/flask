@@ -155,10 +155,10 @@ def TextCatch():
 def textCatchList():
     """수신 메시지 목록 화면 (기본 조회 조건: base_dt = 당일)"""
     # 1. 검색 조건 수신 (없으면 기본값 당일)
-    start_dt, end_dt, sender, receiver, keyword = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
 
     # 2. 목록 조회
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type)
 
     # 3. 화면 전달 (date input은 YYYY-MM-DD 형식이 필요하므로 변환값도 함께 전달)
     return render_template(
@@ -171,6 +171,7 @@ def textCatchList():
         sender=sender,
         receiver=receiver,
         keyword=keyword,
+        msg_type=msg_type,
     )
 
 
@@ -190,7 +191,8 @@ def textCatchDelete():
                             end_dt=request.form.get('end_dt', ''),
                             sender=request.form.get('sender', ''),
                             receiver=request.form.get('receiver', ''),
-                            keyword=request.form.get('keyword', '')))
+                            keyword=request.form.get('keyword', ''),
+                            msg_type=request.form.get('msg_type', '')))
 
 
 @main_bp.route('/textcatch/image/<filename>')
@@ -213,20 +215,23 @@ def _getSearchArgs():
     sender = (request.args.get('sender') or '').strip()
     receiver = (request.args.get('receiver') or '').strip()
     keyword = (request.args.get('keyword') or '').strip()
+    msg_type = (request.args.get('msg_type') or '').strip().upper()
+    if msg_type not in ('MMS', 'SMS'):
+        msg_type = ''
 
     # 시작일이 종료일보다 크면 서로 교환
     if start_dt > end_dt:
         start_dt, end_dt = end_dt, start_dt
 
-    return start_dt, end_dt, sender, receiver, keyword
+    return start_dt, end_dt, sender, receiver, keyword, msg_type
 
 
 @main_bp.route('/textcatch/excel', methods=['GET'])
 def textCatchExcel():
     """현재 조회 조건의 목록을 엑셀(xlsx)로 다운로드 (이미지 제외)"""
-    start_dt, end_dt, sender, receiver, keyword = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type)
     excel_file = makeTextCatchExcel(list_rows)
 
     # 파일명: 조회기간 + 다운로드 시각
@@ -243,9 +248,9 @@ def textCatchExcel():
 @main_bp.route('/textcatch/images', methods=['GET'])
 def textCatchImageZip():
     """현재 조회 조건에 포함된 첨부 이미지를 ZIP으로 한번에 다운로드"""
-    start_dt, end_dt, sender, receiver, keyword = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type)
     zip_file, file_count = makeTextCatchImageZip(list_rows, UPLOAD_FOLDER)
 
     # 받을 이미지가 없으면 빈 ZIP을 주지 않고 목록으로 돌려보냄
@@ -253,7 +258,8 @@ def textCatchImageZip():
         flash('해당 기간에 다운로드할 이미지가 없습니다.', 'info')
         return redirect(url_for('textCatch.textCatchList',
                                 start_dt=start_dt, end_dt=end_dt,
-                                sender=sender, receiver=receiver, keyword=keyword))
+                                sender=sender, receiver=receiver, keyword=keyword,
+                                msg_type=msg_type))
 
     download_name = f"수신이미지_{start_dt}_{end_dt}_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
 

@@ -99,6 +99,7 @@
 									<th>MMS</th>
 									<th>SMS 최종수신</th>
 									<th>MMS 최종수신</th>
+									<th>최대 지연(분)</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -111,6 +112,7 @@
 									<td>{{ r.mmm_chk }}</td>
 									<td>{{ r.sms_dt if r.sms_dt and r.sms_dt.year > 1999 else '-' }}</td>
 									<td>{{ r.mms_dt if r.mms_dt and r.mms_dt.year > 1999 else '-' }}</td>
+									<td>{{ r.dely_tm if r.dely_tm is not none else '-' }}</td>
 								</tr>
 								{% endfor %}
 							</tbody>
