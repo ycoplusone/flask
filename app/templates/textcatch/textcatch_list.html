@@ -26,6 +26,11 @@
         color: #888;
     }
     .input-clear { position: relative; }
+    /* 발신/수신번호 입력칸 폭 15px 축소 (데스크톱만, 모바일은 50% 배치 유지) */
+    @media (min-width: 701px) {
+        .search-form .field-narrow { margin-right: -15px; }
+        .search-form .field-narrow .input-clear { width: calc(100% - 15px); }
+    }
     .input-clear input { width: 100%; padding-right: 30px; }
     .input-clear .btn-clear {
         position: absolute;
@@ -160,14 +165,14 @@
             <label for="end_dt">종료일 (base_dt)</label>
             <input type="date" id="end_dt" name="end_dt" value="{{ end_dt_view }}">
         </div>
-        <div class="field">
+        <div class="field field-narrow">
             <label for="sender">발신번호</label>
             <div class="input-clear">
                 <input type="text" id="sender" name="sender" value="{{ sender }}" placeholder="예: 010123">
                 <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
             </div>
         </div>
-        <div class="field">
+        <div class="field field-narrow">
             <label for="receiver">수신번호</label>
             <div class="input-clear">
                 <input type="text" id="receiver" name="receiver" value="{{ receiver }}" placeholder="예: 010123">
