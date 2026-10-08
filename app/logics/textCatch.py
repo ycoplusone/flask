@@ -35,11 +35,12 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     db.session.commit()
 
 
-def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', keyword: str = ''):
+def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = ''):
     """
     수신 메시지(received_messages) 목록 조회.
     start_dt / end_dt : 조회 기준일(base_dt, varchar(8) YYYYMMDD) 범위
     sender            : 발신번호 부분검색 (선택)
+    receiver          : 수신번호 부분검색 (선택)
     keyword           : 메시지 내용 부분검색 (선택)
     """
     sql = """
@@ -61,6 +62,10 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', keyword: str 
     if sender:
         sql += " AND sender LIKE :sender "
         params['sender'] = f"%{sender}%"
+
+    if receiver:
+        sql += " AND receiver LIKE :receiver "
+        params['receiver'] = f"%{receiver}%"
 
     if keyword:
         sql += " AND message_body LIKE :keyword "

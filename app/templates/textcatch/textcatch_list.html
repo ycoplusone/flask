@@ -117,7 +117,6 @@
 
 <div class="container py-4">
     <h2 class="page-title">📩 수신 메시지 조회</h2>
-    <p class="page-subtitle">SMS / MMS 수신 내역을 기준일(base_dt) 범위로 조회합니다. 기본 조건은 D-8 ~ D-1 입니다.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -141,6 +140,10 @@
             <input type="text" id="sender" name="sender" value="{{ sender }}" placeholder="예: 010123">
         </div>
         <div class="field">
+            <label for="receiver">수신번호</label>
+            <input type="text" id="receiver" name="receiver" value="{{ receiver }}" placeholder="예: 010123">
+        </div>
+        <div class="field">
             <label for="keyword">메시지 내용</label>
             <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="검색할 단어">
         </div>
@@ -160,15 +163,16 @@
                 <input type="hidden" name="start_dt" value="{{ start_dt }}">
                 <input type="hidden" name="end_dt" value="{{ end_dt }}">
                 <input type="hidden" name="sender" value="{{ sender }}">
+                <input type="hidden" name="receiver" value="{{ receiver }}">
                 <input type="hidden" name="keyword" value="{{ keyword }}">
                 <button type="submit" class="btn-delete" id="btn-delete" disabled>🗑 선택 삭제</button>
             </form>
             <a class="btn-excel"
-               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&keyword={{ keyword|urlencode }}">
+               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}">
                 ⬇ 엑셀 다운로드
             </a>
             <a class="btn-zip"
-               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&keyword={{ keyword|urlencode }}">
+               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}">
                 🗂 이미지 다운로드
             </a>
         </div>
