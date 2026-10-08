@@ -25,6 +25,33 @@
         font-size: 13px;
         color: #888;
     }
+    .input-clear { position: relative; }
+    .input-clear input { width: 100%; padding-right: 30px; }
+    .input-clear .btn-clear {
+        position: absolute;
+        top: 50%;
+        right: 6px;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 0;             /* style.css 모바일 button min-height: 40px 무효화 */
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: #ccc;
+        color: white;
+        font-size: 16px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+    }
+    .input-clear .btn-clear:hover { background: #999; }
+    .input-clear input:placeholder-shown + .btn-clear { display: none; }
 
     .btn-search, .btn-excel, .btn-zip {
         color: white;
@@ -135,15 +162,24 @@
         </div>
         <div class="field">
             <label for="sender">발신번호</label>
-            <input type="text" id="sender" name="sender" value="{{ sender }}" placeholder="예: 010123">
+            <div class="input-clear">
+                <input type="text" id="sender" name="sender" value="{{ sender }}" placeholder="예: 010123">
+                <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
+            </div>
         </div>
         <div class="field">
             <label for="receiver">수신번호</label>
-            <input type="text" id="receiver" name="receiver" value="{{ receiver }}" placeholder="예: 010123">
+            <div class="input-clear">
+                <input type="text" id="receiver" name="receiver" value="{{ receiver }}" placeholder="예: 010123">
+                <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
+            </div>
         </div>
         <div class="field">
             <label for="keyword">메시지 내용</label>
-            <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="검색할 단어">
+            <div class="input-clear">
+                <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="검색할 단어">
+                <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
+            </div>
         </div>
         <div class="field">
             <label for="msg_type">구분</label>
@@ -256,6 +292,15 @@
 </div>
 
 <script>
+// 조회 조건 입력값 지우기 (x 버튼)
+document.querySelectorAll('.input-clear .btn-clear').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const input = btn.previousElementSibling;
+        input.value = '';
+        input.focus();
+    });
+});
+
 (function () {
     const rows = Array.from(document.querySelectorAll('.js-check-row'));
     const allBoxes = Array.from(document.querySelectorAll('.js-check-all'));
