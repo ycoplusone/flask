@@ -38,7 +38,7 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     if image_filename:
         upd_sql = text("""
         INSERT INTO devDB.received_info(device_id, receiver, tot_chk,dely_tm, sms_chk, sms_dt,mmm_chk, mms_dt)
-        values(:device_id, REGEXP_REPLACE(:receiver, '^\\+8210', '010'), 'T',0, 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'), 'T', now())
+        values(:device_id, :receiver, 'T',0, 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'), 'T', now())
         ON DUPLICATE KEY UPDATE
         device_id   = values(device_id),
         tot_chk     = values(tot_chk) ,
@@ -48,14 +48,15 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     else:
         upd_sql = text("""
         INSERT INTO devDB.received_info(device_id, receiver, tot_chk,dely_tm, sms_chk, sms_dt,mmm_chk, mms_dt)
-        values(:device_id, REGEXP_REPLACE(:receiver, '^\\+8210', '010'), 'T',0, 'T', now(), 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'))
+        values(:device_id, :receiver, 'T',0, 'T', now(), 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'))
         ON DUPLICATE KEY UPDATE
         device_id   = values(device_id),
         tot_chk     = values(tot_chk) ,
         sms_chk     = values(sms_chk) ,
         sms_dt      = values(sms_dt) 
         """)
-
+    if receiver.startswith("+8210"):
+        receiver = "010" + receiver[5:]  # '+8210' 길이(5)만큼 자르고 '010' 결합
 
     db.session.execute(upd_sql, {'receiver': receiver , 'device_id': device_id or 'test'})
     db.session.commit()
