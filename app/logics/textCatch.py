@@ -35,13 +35,14 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     db.session.commit()
 
 
-def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = ''):
+def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = '', msg_type: str = ''):
     """
     수신 메시지(received_messages) 목록 조회.
     start_dt / end_dt : 조회 기준일(base_dt, varchar(8) YYYYMMDD) 범위
     sender            : 발신번호 부분검색 (선택)
     receiver          : 수신번호 부분검색 (선택)
     keyword           : 메시지 내용 부분검색 (선택)
+    msg_type          : 'MMS' 이미지 첨부 건 / 'SMS' 이미지 없는 건 / '' 전체 (선택)
     """
     sql = """
         SELECT id
@@ -53,6 +54,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
              , received_at
              , created_at
              , base_dt
+             , TIMESTAMPDIFF(MINUTE, received_at, created_at) dely_tm
         FROM received_messages
         WHERE base_dt BETWEEN :start_dt AND :end_dt
           AND use_yn = 'Y'
@@ -70,6 +72,12 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
     if keyword:
         sql += " AND message_body LIKE :keyword "
         params['keyword'] = f"%{keyword}%"
+
+    # image_filename에 문자열 'None'이 들어간 과거 데이터도 SMS로 취급
+    if msg_type == 'MMS':
+        sql += " AND COALESCE(NULLIF(image_filename, 'None'), '') != '' "
+    elif msg_type == 'SMS':
+        sql += " AND COALESCE(NULLIF(image_filename, 'None'), '') = '' "
 
     sql += " ORDER BY id DESC  "
 

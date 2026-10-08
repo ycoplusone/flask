@@ -26,7 +26,7 @@
         color: #888;
     }
 
-    .btn-search, .btn-reset, .btn-excel, .btn-zip {
+    .btn-search, .btn-excel, .btn-zip {
         color: white;
         border: none;
         border-radius: 4px;
@@ -39,8 +39,6 @@
     }
     .btn-search { background: #e74c3c; }
     .btn-search:hover { background: #c0392b; }
-    .btn-reset { background: #95a5a6; font-weight: normal; }
-    .btn-reset:hover { background: #7f8c8d; color: white; }
     .btn-excel { background: #217346; }
     .btn-excel:hover { background: #1a5c38; color: white; }
     .btn-zip { background: #f39c12; }
@@ -104,7 +102,7 @@
         .search-form { padding: 12px; }
         .search-form .field { flex: 1 1 calc(50% - 5px); min-width: 0; }
         .search-form .field input { width: 100%; }
-        .btn-search, .btn-reset { flex: 1 1 calc(50% - 5px); }
+        .btn-search { flex: 1 1 100%; }
         .list-header .actions { width: 100%; }
         .list-header .actions a { flex: 1 1 0; padding: 10px 8px; }
         .msg-table { table-layout: auto; }
@@ -147,8 +145,15 @@
             <label for="keyword">메시지 내용</label>
             <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="검색할 단어">
         </div>
+        <div class="field">
+            <label for="msg_type">구분</label>
+            <select id="msg_type" name="msg_type">
+                <option value="" {{ 'selected' if not msg_type else '' }}>전체</option>
+                <option value="MMS" {{ 'selected' if msg_type == 'MMS' else '' }}>MMS</option>
+                <option value="SMS" {{ 'selected' if msg_type == 'SMS' else '' }}>SMS</option>
+            </select>
+        </div>
         <button type="submit" class="btn-search">조회</button>
-        <a href="/textcatch" class="btn-reset">초기화</a>
     </form>
 
     <div class="list-header">
@@ -165,14 +170,15 @@
                 <input type="hidden" name="sender" value="{{ sender }}">
                 <input type="hidden" name="receiver" value="{{ receiver }}">
                 <input type="hidden" name="keyword" value="{{ keyword }}">
+                <input type="hidden" name="msg_type" value="{{ msg_type }}">
                 <button type="submit" class="btn-delete" id="btn-delete" disabled>🗑 선택 삭제</button>
             </form>
             <a class="btn-excel"
-               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}">
+               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}">
                 ⬇ 엑셀 다운로드
             </a>
             <a class="btn-zip"
-               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}">
+               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}">
                 🗂 이미지 다운로드
             </a>
         </div>
@@ -196,6 +202,7 @@
             <col>
             <col style="width: 110px;">
             <col style="width: 160px;">
+            <col style="width: 80px;">
         </colgroup>
         <thead>
             <tr>
@@ -207,6 +214,7 @@
                 <th>메시지 내용</th>
                 <th>첨부 이미지</th>
                 <th>수신 시간</th>
+                <th>지연시간</th>
             </tr>
         </thead>
         <tbody>
@@ -237,10 +245,11 @@
                         {% endif %}
                     </td>
                     <td data-label="수신 시간">{{ row.received_at }}</td>
+                    <td data-label="지연시간">{{ row.dely_tm ~ '분' if row.dely_tm is not none else '-' }}</td>
                 </tr>
                 {% endfor %}
             {% else %}
-                <tr><td colspan="8" class="no-data">조회된 수신 메시지가 없습니다.</td></tr>
+                <tr><td colspan="9" class="no-data">조회된 수신 메시지가 없습니다.</td></tr>
             {% endif %}
         </tbody>
     </table>
