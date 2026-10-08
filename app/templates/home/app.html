@@ -105,8 +105,8 @@
 							<tbody>
 								{% for r in received_info %}
 								<tr{% if r.tot_chk == 'F' %} class="chk-fail"{% endif %}>
-									<td>{{ r.device_id }}</td>
-									<td>{{ r.receiver }}</td>
+									<td>{{ r.device_id }}</td>									
+									<td><a href="sms:{{ r.receiver }}">{{ r.receiver }}</a></td>
 									<td>{{ r.tot_chk }}</td>
 									<td>{{ r.sms_chk }}</td>
 									<td>{{ r.mmm_chk }}</td>
