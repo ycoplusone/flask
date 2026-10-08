@@ -32,6 +32,21 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
         'received_at': received_time,
         'device_id': device_id or '',
     })
+
+    # 이미지 없으면 SMS 컬럼만, 있으면 MMS 컬럼만 갱신 (반대쪽 값은 유지)
+    if image_filename:
+        chk_cols = "mmm_chk = 'T', mms_dt = now()"
+    else:
+        chk_cols = "sms_chk = 'T', sms_dt = now()"
+
+    upd_sql = text(rf"""
+    update received_info
+    set tot_chk = 'T'
+    , created_dt= now()
+    , {chk_cols}
+    where receiver = REGEXP_REPLACE(:receiver, '^\\+8210', '010')
+    """)
+    db.session.execute(upd_sql, {'receiver': receiver})
     db.session.commit()
 
 
