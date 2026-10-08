@@ -4,7 +4,7 @@ import mimetypes
 from flask import Blueprint, render_template,Flask, request, jsonify, send_from_directory, send_file, abort, flash, redirect, url_for
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip
 
@@ -153,12 +153,12 @@ def TextCatch():
 
 @main_bp.route('/textcatch', methods=['GET'])
 def textCatchList():
-    """수신 메시지 목록 화면 (기본 조회 조건: base_dt BETWEEN D-8 AND D-1)"""
-    # 1. 검색 조건 수신 (없으면 기본값 D-8 ~ D-1)
-    start_dt, end_dt, sender, keyword = _getSearchArgs()
+    """수신 메시지 목록 화면 (기본 조회 조건: base_dt = 당일)"""
+    # 1. 검색 조건 수신 (없으면 기본값 당일)
+    start_dt, end_dt, sender, receiver, keyword = _getSearchArgs()
 
     # 2. 목록 조회
-    list_rows = getTextCatchList(start_dt, end_dt, sender, keyword)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword)
 
     # 3. 화면 전달 (date input은 YYYY-MM-DD 형식이 필요하므로 변환값도 함께 전달)
     return render_template(
@@ -169,6 +169,7 @@ def textCatchList():
         start_dt_view=f"{start_dt[0:4]}-{start_dt[4:6]}-{start_dt[6:8]}",
         end_dt_view=f"{end_dt[0:4]}-{end_dt[4:6]}-{end_dt[6:8]}",
         sender=sender,
+        receiver=receiver,
         keyword=keyword,
     )
 
@@ -188,6 +189,7 @@ def textCatchDelete():
                             start_dt=request.form.get('start_dt', ''),
                             end_dt=request.form.get('end_dt', ''),
                             sender=request.form.get('sender', ''),
+                            receiver=request.form.get('receiver', ''),
                             keyword=request.form.get('keyword', '')))
 
 
@@ -201,29 +203,30 @@ def textCatchImage(filename):
 
 
 def _getSearchArgs():
-    """목록/엑셀/이미지ZIP이 공통으로 쓰는 조회 조건 (기본 D-8 ~ D-1)"""
-    today = datetime.now()
-    default_start = (today - timedelta(days=8)).strftime('%Y%m%d')
-    default_end = (today - timedelta(days=1)).strftime('%Y%m%d')
+    """목록/엑셀/이미지ZIP이 공통으로 쓰는 조회 조건 (기본 당일 ~ 당일)"""
+    today = datetime.now().strftime('%Y%m%d')
+    default_start = today
+    default_end = today
 
     start_dt = (request.args.get('start_dt') or default_start).replace('-', '').strip()
     end_dt = (request.args.get('end_dt') or default_end).replace('-', '').strip()
     sender = (request.args.get('sender') or '').strip()
+    receiver = (request.args.get('receiver') or '').strip()
     keyword = (request.args.get('keyword') or '').strip()
 
     # 시작일이 종료일보다 크면 서로 교환
     if start_dt > end_dt:
         start_dt, end_dt = end_dt, start_dt
 
-    return start_dt, end_dt, sender, keyword
+    return start_dt, end_dt, sender, receiver, keyword
 
 
 @main_bp.route('/textcatch/excel', methods=['GET'])
 def textCatchExcel():
     """현재 조회 조건의 목록을 엑셀(xlsx)로 다운로드 (이미지 제외)"""
-    start_dt, end_dt, sender, keyword = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, keyword)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword)
     excel_file = makeTextCatchExcel(list_rows)
 
     # 파일명: 조회기간 + 다운로드 시각
@@ -240,9 +243,9 @@ def textCatchExcel():
 @main_bp.route('/textcatch/images', methods=['GET'])
 def textCatchImageZip():
     """현재 조회 조건에 포함된 첨부 이미지를 ZIP으로 한번에 다운로드"""
-    start_dt, end_dt, sender, keyword = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, keyword)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword)
     zip_file, file_count = makeTextCatchImageZip(list_rows, UPLOAD_FOLDER)
 
     # 받을 이미지가 없으면 빈 ZIP을 주지 않고 목록으로 돌려보냄
@@ -250,7 +253,7 @@ def textCatchImageZip():
         flash('해당 기간에 다운로드할 이미지가 없습니다.', 'info')
         return redirect(url_for('textCatch.textCatchList',
                                 start_dt=start_dt, end_dt=end_dt,
-                                sender=sender, keyword=keyword))
+                                sender=sender, receiver=receiver, keyword=keyword))
 
     download_name = f"수신이미지_{start_dt}_{end_dt}_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
 
