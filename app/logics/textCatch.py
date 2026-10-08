@@ -1,4 +1,5 @@
 import os
+from tkinter import INSERT
 import zipfile
 from io import BytesIO
 
@@ -33,20 +34,31 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
         'device_id': device_id or '',
     })
 
+
     # 이미지 없으면 SMS 컬럼만, 있으면 MMS 컬럼만 갱신 (반대쪽 값은 유지)
     if image_filename:
-        chk_cols = "mmm_chk = 'T', mms_dt = now()"
+        upd_sql = text("""
+        INSERT INTO devDB.received_info(device_id, receiver, tot_chk,dely_tm, sms_chk, sms_dt,mmm_chk, mms_dt)
+        values(:device_id, REGEXP_REPLACE(:receiver, '^\\+8210', '010'), 'T',0, 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'), 'T', now())
+        ON DUPLICATE KEY UPDATE
+        device_id   = values(device_id),
+        tot_chk     = values(tot_chk) ,
+        mmm_chk     = values(mmm_chk) ,
+        mms_dt      = values(mms_dt)   
+        """)
     else:
-        chk_cols = "sms_chk = 'T', sms_dt = now()"
+        upd_sql = text("""
+        INSERT INTO devDB.received_info(device_id, receiver, tot_chk,dely_tm, sms_chk, sms_dt,mmm_chk, mms_dt)
+        values(:device_id, REGEXP_REPLACE(:receiver, '^\\+8210', '010'), 'T',0, 'T', now(), 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'))
+        ON DUPLICATE KEY UPDATE
+        device_id   = values(device_id),
+        tot_chk     = values(tot_chk) ,
+        sms_chk     = values(sms_chk) ,
+        sms_dt      = values(sms_dt) 
+        """)
 
-    upd_sql = text(rf"""
-    update received_info
-    set tot_chk = 'T'
-    , created_dt= now()
-    , {chk_cols}
-    where receiver = REGEXP_REPLACE(:receiver, '^\\+8210', '010')
-    """)
-    db.session.execute(upd_sql, {'receiver': receiver})
+
+    db.session.execute(upd_sql, {'receiver': receiver , 'device_id': device_id or 'test'})
     db.session.commit()
 
 
