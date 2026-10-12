@@ -84,7 +84,8 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
              , TIMESTAMPDIFF(MINUTE, received_at, created_at) dely_tm
         FROM received_messages
         WHERE base_dt BETWEEN :start_dt AND :end_dt
-          AND use_yn = 'Y'
+        AND use_yn = 'Y'
+        AND COALESCE(SENDER, '') != ''
     """
     params = {'start_dt': start_dt, 'end_dt': end_dt}
 
