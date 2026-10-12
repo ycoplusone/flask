@@ -26,7 +26,7 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
 
     db.session.execute(sql_query, {
         'sender': sender,
-        'receiver': receiver,
+        'receiver': receiver or '1234567890',
         'message_body': message_body,
         'image_filename': image_filename or '',
         'received_at': received_time,
@@ -58,7 +58,7 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     if receiver.startswith("+8210"):
         receiver = "010" + receiver[5:]  # '+8210' 길이(5)만큼 자르고 '010' 결합
 
-    db.session.execute(upd_sql, {'receiver': receiver , 'device_id': device_id or 'test'})
+    db.session.execute(upd_sql, {'receiver': receiver or '1234567890', 'device_id': device_id or 'test'})
     db.session.commit()
 
 
