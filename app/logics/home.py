@@ -82,6 +82,7 @@ def upsert_received_info():
         from received_messages
         where base_dt between date_format( NOW() - INTERVAL 2 day , '%Y%m%d') and date_format( NOW() - INTERVAL 0 day , '%Y%m%d')
         and COALESCE(device_id,'') != ''
+        AND COALESCE(SENDER, '') != ''
         group by device_id, receiver
     )  a
     ON DUPLICATE KEY UPDATE
