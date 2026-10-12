@@ -102,7 +102,10 @@ def get_received_info():
     upsert_received_info()
     sql = text("""
     select 
-    *
+    device_id,receiver,tot_chk,sms_chk,mmm_chk,app_chk    
+    , TIMESTAMPDIFF(hour, sms_dt, now()) sms_hour
+    , TIMESTAMPDIFF(hour, mms_dt, now()) mms_hour
+    , TIMESTAMPDIFF(hour, app_dt, now()) app_hour
     from received_info
     order by 3,1,2
     """)
