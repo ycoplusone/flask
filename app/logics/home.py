@@ -54,7 +54,7 @@ def upsert_received_info():
 
     upd_sql = text("""
     update received_info
-    set tot_chk = (case when sms_dt >= (NOW() - INTERVAL 12 HOUR) or mms_dt >= (NOW() - INTERVAL 18 HOUR) then 'T' else 'F' end)
+    set tot_chk = (case when sms_dt >= (NOW() - INTERVAL 12 HOUR) or mms_dt >= (NOW() - INTERVAL 12 HOUR) then 'T' else 'F' end)
     , sms_chk   = (case when sms_dt >= (NOW() - INTERVAL 12 HOUR) then 'T' else 'F' end)
     , mmm_chk   = (case when mms_dt >= (NOW() - INTERVAL 12 HOUR) then 'T' else 'F' end)
     , app_chk   = (case when app_dt >= (NOW() - INTERVAL 12 HOUR) then 'T' else 'F' end)
