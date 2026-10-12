@@ -34,6 +34,8 @@ def get_last7_text_counts():
     from received_messages
     where base_dt between DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 7 DAY), '%Y%m%d') 
     and DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 0 DAY), '%Y%m%d')
+    and use_yn = 'Y'
+    AND COALESCE(SENDER, '') != ''
     group by base_dt
     order by base_dt desc
     """)
