@@ -35,7 +35,16 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
 
 
     # 이미지 없으면 SMS 컬럼만, 있으면 MMS 컬럼만 갱신 (반대쪽 값은 유지)
-    if image_filename:
+    if receiver == '':
+        upd_sql = text("""
+        INSERT INTO devDB.received_info(device_id, receiver, app_chk , app_dt)
+        values(:device_id, :receiver, 'T', now())
+        ON DUPLICATE KEY UPDATE
+        device_id   = values(device_id),
+        app_chk     = values(app_chk) ,
+        app_dt      = values(app_dt)
+        """)
+    elif image_filename:
         upd_sql = text("""
         INSERT INTO devDB.received_info(device_id, receiver, tot_chk,dely_tm, sms_chk, sms_dt,mmm_chk, mms_dt)
         values(:device_id, :receiver, 'T',0, 'F', STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s'), 'T', now())
