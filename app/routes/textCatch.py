@@ -98,7 +98,7 @@ def TextCatch():
     device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
     timestamp       = payload.get('timestamp')          # 수신 시간 (epoch milliseconds)
 
-    if not sender or not receiver:
+    if not receiver:
         return jsonify({"status": "error", "message": "sender, receiver are required"}), 400
 
     # 3. timestamp(밀리초) -> datetime 문자열 변환 (없으면 현재 시간 사용)
