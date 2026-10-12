@@ -92,7 +92,7 @@ def TextCatch():
 
     # 2. 메타데이터 수신
     msg_type        = payload.get('type', 'SMS')        # SMS / MMS
-    sender          = payload.get('sender')             # 발신자
+    sender          = payload.get('sender','1234567890')             # 발신자
     receiver        = payload.get('receiver')           # 수신자
     message_body    = payload.get('body', '')           # 메시지 내용
     device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
