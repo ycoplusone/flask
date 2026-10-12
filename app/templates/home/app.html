@@ -86,7 +86,7 @@
 		<div class="col-12 mb-3">
 			<div class="card h-100">
 				<div class="card-body">
-					<h5 class="card-title">SMS/MMS 수신 체크 (최근 18시간)</h5>
+					<h5 class="card-title">SMS/MMS 수신 체크</h5>
 					{% if received_info %}
 					<div style="overflow:auto">
 						<table class="table table-sm">
@@ -95,11 +95,9 @@
 									<th>기기ID</th>
 									<th>수신번호</th>
 									<th>전체</th>
-									<th>SMS</th>
-									<th>MMS</th>
-									<th>SMS 최종수신</th>
-									<th>MMS 최종수신</th>
-									<th>App 최종수신</th>
+									<th>SMS(시간)</th>
+									<th>MMS(시간)</th>
+									<th>App(시간)</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -108,11 +106,9 @@
 									<td>{{ r.device_id }}</td>									
 									<td><a href="sms:{{ r.receiver }}">{{ r.receiver }}</a></td>
 									<td>{{ r.tot_chk }}</td>
-									<td>{{ r.sms_chk }}</td>
-									<td>{{ r.mmm_chk }}</td>
-									<td>{{ r.sms_hour }}</td>
-									<td>{{ r.mms_hour }}</td>
-									<td>{{ r.app_hour }}</td>
+									<td>{{ r.sms_chk ~ ' (' ~r.sms_hour ~ ')' }}</td>
+									<td>{{ r.mmm_chk ~ ' (' ~r.mms_hour ~ ')' }}</td>
+									<td>{{ r.app_chk ~ ' (' ~r.app_hour ~ ')' }}</td>
 								</tr>
 								{% endfor %}
 							</tbody>
