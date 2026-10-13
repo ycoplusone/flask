@@ -105,12 +105,13 @@ def get_received_info():
     upsert_received_info()
     sql = text("""
     select 
-    device_id,receiver,tot_chk,sms_chk,mmm_chk,app_chk    
+    device_id,receiver,tot_chk,sms_chk,mmm_chk
+    , max(app_chk) over(partition by device_id) app_chk 
     , TIMESTAMPDIFF(hour, sms_dt, now()) sms_hour
     , TIMESTAMPDIFF(hour, mms_dt, now()) mms_hour
-    , TIMESTAMPDIFF(hour, app_dt, now()) app_hour
+    , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by device_id) app_hour
     from received_info
-    order by 3,1,2
+    order by 1,2,3
     """)
     result = db.session.execute(sql)
     return [dict(row) for row in result.mappings()]
