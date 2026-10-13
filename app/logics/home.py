@@ -111,6 +111,7 @@ def get_received_info():
     , TIMESTAMPDIFF(hour, mms_dt, now()) mms_hour
     , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by device_id) app_hour
     from received_info
+    where receiver not in ('1234567890','+11002474588')
     order by 1,2,3
     """)
     result = db.session.execute(sql)
