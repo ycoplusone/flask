@@ -38,8 +38,11 @@ def receive_message():
     # 1. 텍스트 메타데이터 수신
     sender          = request.form.get('sender')    #수신자
     receiver        = request.form.get('receiver')   #발신자
-    message_body    = request.form.get('message', '')   #메시지 내용
-    received_time   = request.form.get('timestamp', datetime.now().isoformat()) #수신 시간 (없으면 현재 시간 사용)
+    message_body    = request.form.get('message'        , '')   #메시지 내용
+    received_time   = request.form.get('timestamp'      , datetime.now().isoformat()) #수신 시간 (없으면 현재 시간 사용)
+    sent_at         = request.form.get('sent_at'        , datetime.now().isoformat()) #발   신 시간 (없으면 현재 시간 사용)
+    attempt         = request.form.get('attempt'        , '1')   #시도횧수 (없으면 1회)
+    path            = request.form.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
     
     # 2. 이미지 파일 처리 (MMS의 경우)
     image_filename = None
@@ -57,9 +60,9 @@ def receive_message():
     print(f"내용: {message_body}")
     if image_filename:
         print(f"첨부 이미지: {image_filename}")
-        setTextCatch(sender, receiver, message_body, received_time, image_filename)
+        setTextCatch(sender, receiver, message_body, received_time, image_filename,sent_at,attempt,path)
     else:
-        setTextCatch(sender, receiver, message_body, received_time)
+        setTextCatch(sender, receiver, message_body, received_time,'',sent_at,attempt,path)
 
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
