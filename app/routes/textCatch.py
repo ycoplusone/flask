@@ -52,7 +52,7 @@ def TextCatch():
     message_body    = payload.get('body', '')           # 메시지 내용
     device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
     timestamp       = payload.get('timestamp')          # 수신 시간 (epoch milliseconds)
-    sent_at         = payload.get('sent_at'        , datetime.now().isoformat()) #발   신 시간 (없으면 현재 시간 사용)
+    sent_at         = payload.get('sent_at' ) #발   신 시간 (없으면 현재 시간 사용)
     attempt         = payload.get('attempt'        , '1')   #시도횧수 (없으면 1회)
     path            = payload.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
     msg_id          = payload.get('msg_id'         , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.
@@ -68,6 +68,14 @@ def TextCatch():
             received_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     else:
         received_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if sent_at:
+        try:
+            send_time = datetime.fromtimestamp(int(sent_at) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+        except (TypeError, ValueError):
+            send_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        send_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # 4. Base64 이미지 -> 파일 저장 (MMS의 경우, 이미지는 단일 파일)
     images = payload.get('images') or []
@@ -106,7 +114,7 @@ def TextCatch():
 
     # TODO: DB 입력 처리
     # image_filename이 None이면 f-string INSERT에서 문자열 'None'으로 저장되므로 빈 문자열로 전달
-    setTextCatch(sender, receiver, message_body, received_time,device_id , sent_at , attempt,path,msg_id,image_filename or '' )
+    setTextCatch(sender, receiver, message_body, received_time,device_id , send_time , attempt,path,msg_id,image_filename or '' )
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
 
