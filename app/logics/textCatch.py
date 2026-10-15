@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from app import db
 
-def setTextCatch(sender:str , receiver:str , message_body:str , received_time:str , device_id:str , image_filename:str = ''):
+def setTextCatch(sender:str , receiver:str , message_body:str , received_time:str , device_id:str , image_filename:str = '',sent_at:str = '',attempt:str = '',path:str = ''):
     """
     텍스트 수신 관련 설정을 초기화하는 함수.
     sender          = request.form.get('sender')    #수신자
@@ -20,8 +20,8 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     # 값을 SQL에 직접 넣으면 메시지 내용의 작은따옴표(')에서 문법 오류가 나므로
     # 반드시 바인딩 파라미터로 전달한다.
     sql_query = text("""
-        INSERT INTO devDB.received_messages( sender, receiver, message_body, image_filename, received_at, device_id)
-        VALUES( :sender, :receiver, :message_body, :image_filename, :received_at ,:device_id)
+        INSERT INTO devDB.received_messages( sender, receiver, message_body, image_filename, received_at, device_id,,sent_at,attempt,path)
+        VALUES( :sender, :receiver, :message_body, :image_filename, :received_at ,:device_id,:sent_at,:attempt,:path)
     """)
 
     db.session.execute(sql_query, {
@@ -31,6 +31,9 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
         'image_filename': image_filename or '',
         'received_at': received_time,
         'device_id': device_id or '',
+        'sent_at': sent_at or '',
+        'attempt': attempt or '',
+        'path': path or ''
     })
 
 
