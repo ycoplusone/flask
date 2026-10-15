@@ -60,9 +60,9 @@ def receive_message():
     print(f"내용: {message_body}")
     if image_filename:
         print(f"첨부 이미지: {image_filename}")
-        setTextCatch(sender, receiver, message_body, received_time, image_filename,sent_at,attempt,path)
+        setTextCatch(sender, receiver, message_body, received_time,sent_at,attempt,path, image_filename)
     else:
-        setTextCatch(sender, receiver, message_body, received_time,'',sent_at,attempt,path)
+        setTextCatch(sender, receiver, message_body, received_time,sent_at,attempt,path,'')
 
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 

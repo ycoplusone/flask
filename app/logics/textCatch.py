@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from app import db
 
-def setTextCatch(sender:str , receiver:str , message_body:str , received_time:str , device_id:str , image_filename:str = '',sent_at:str = '',attempt:str = '',path:str = ''):
+def setTextCatch(sender:str , receiver:str , message_body:str , received_time:str , device_id:str , sent_at:str ,attempt:str ,path:str, image_filename:str = ''):
     """
     텍스트 수신 관련 설정을 초기화하는 함수.
     sender          = request.form.get('sender')    #수신자
@@ -31,8 +31,8 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
         'image_filename': image_filename or '',
         'received_at': received_time,
         'device_id': device_id or '',
-        'sent_at': sent_at or '',
-        'attempt': attempt or '',
+        'sent_at': sent_at ,
+        'attempt': attempt or '1',
         'path': path or ''
     })
 
