@@ -52,10 +52,10 @@ def TextCatch():
     message_body    = payload.get('body', '')           # 메시지 내용
     device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
     timestamp       = payload.get('timestamp')          # 수신 시간 (epoch milliseconds)
-    sent_at         = payload.form.get('sent_at'        , datetime.now().isoformat()) #발   신 시간 (없으면 현재 시간 사용)
-    attempt         = payload.form.get('attempt'        , '1')   #시도횧수 (없으면 1회)
-    path            = payload.form.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
-    msg_id          = payload.form.get('msg_id'         , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.
+    sent_at         = payload.get('sent_at'        , datetime.now().isoformat()) #발   신 시간 (없으면 현재 시간 사용)
+    attempt         = payload.get('attempt'        , '1')   #시도횧수 (없으면 1회)
+    path            = payload.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
+    msg_id          = payload.get('msg_id'         , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.
 
     #if not receiver:
     #    return jsonify({"status": "error", "message": "sender, receiver are required"}), 400
