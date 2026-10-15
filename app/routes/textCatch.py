@@ -43,7 +43,7 @@ def receive_message():
     sent_at         = request.form.get('sent_at'        , datetime.now().isoformat()) #발   신 시간 (없으면 현재 시간 사용)
     attempt         = request.form.get('attempt'        , '1')   #시도횧수 (없으면 1회)
     path            = request.form.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
-    
+    msg_id          = request.form.get('msg_id'          , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.
     # 2. 이미지 파일 처리 (MMS의 경우)
     image_filename = None
     if 'image' in request.files:
@@ -58,11 +58,12 @@ def receive_message():
     # 3. 데이터 검증 및 저장 (DB 적재 등)
     print(f"[{received_time}] From: {sender} -> To: {receiver}")
     print(f"내용: {message_body}")
+
     if image_filename:
         print(f"첨부 이미지: {image_filename}")
-        setTextCatch(sender, receiver, message_body, received_time,sent_at,attempt,path, image_filename)
+        setTextCatch(sender, receiver, message_body, received_time,sent_at,attempt,path,msg_id, image_filename)
     else:
-        setTextCatch(sender, receiver, message_body, received_time,sent_at,attempt,path,'')
+        setTextCatch(sender, receiver, message_body, received_time,sent_at,attempt,path,msg_id,'')
 
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
@@ -100,6 +101,10 @@ def TextCatch():
     message_body    = payload.get('body', '')           # 메시지 내용
     device_id       = payload.get('device_id', '')           # 폰의 고유 ID (선택)
     timestamp       = payload.get('timestamp')          # 수신 시간 (epoch milliseconds)
+    sent_at         = request.form.get('sent_at'        , datetime.now().isoformat()) #발   신 시간 (없으면 현재 시간 사용)
+    attempt         = request.form.get('attempt'        , '1')   #시도횧수 (없으면 1회)
+    path            = request.form.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
+    msg_id          = request.form.get('msg_id'         , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.
 
     #if not receiver:
     #    return jsonify({"status": "error", "message": "sender, receiver are required"}), 400
@@ -150,7 +155,7 @@ def TextCatch():
 
     # TODO: DB 입력 처리
     # image_filename이 None이면 f-string INSERT에서 문자열 'None'으로 저장되므로 빈 문자열로 전달
-    setTextCatch(sender, receiver, message_body, received_time,device_id ,image_filename or '' )
+    setTextCatch(sender, receiver, message_body, received_time,device_id , sent_at,attempt,path,msg_id,image_filename or '' )
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
 
