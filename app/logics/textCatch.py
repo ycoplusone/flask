@@ -20,7 +20,7 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
     # 값을 SQL에 직접 넣으면 메시지 내용의 작은따옴표(')에서 문법 오류가 나므로
     # 반드시 바인딩 파라미터로 전달한다.
     sql_query = text("""
-        INSERT INTO devDB.received_messages( sender, receiver, message_body, image_filename, received_at, device_id,,sent_at,attempt,path)
+        INSERT INTO devDB.received_messages( sender, receiver, message_body, image_filename, received_at, device_id,sent_at,attempt,path)
         VALUES( :sender, :receiver, :message_body, :image_filename, :received_at ,:device_id,:sent_at,:attempt,:path)
     """)
 
