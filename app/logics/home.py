@@ -110,6 +110,7 @@ def get_received_info():
     , TIMESTAMPDIFF(hour, sms_dt, now()) sms_hour
     , TIMESTAMPDIFF(hour, mms_dt, now()) mms_hour
     , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by device_id) app_hour
+    , dely_tm
     from received_info
     where receiver not in ('1234567890','+11002474588')
     order by 1,2,3

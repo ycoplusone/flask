@@ -103,6 +103,7 @@
 									<th>SMS(시간)</th>
 									<th>MMS(시간)</th>
 									<th>App(시간)</th>
+									<th>지연시간</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -128,6 +129,7 @@
 									{% if loop.first %}
 									<td rowspan="{{ rows|length }}" class="merged val-{{ r.app_chk }}">{{ r.app_chk ~ ' (' ~r.app_hour ~ ')' }}</td>
 									{% endif %}
+									<td>{{ r.dely_tm }}</td>
 								</tr>
 								{% endfor %}
 								{% endfor %}
