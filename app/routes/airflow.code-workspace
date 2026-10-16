@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../../superset"
+		},
+		{
+			"path": "../../../proto_dashboard"
 		}
 	],
 	"settings": {}
