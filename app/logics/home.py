@@ -72,7 +72,7 @@ def upsert_received_info():
         , case when max(mms_dt) >= max(chk_tm) then 'T' else 'F' end mmm_chk
         , max(sms_dt) sms_dt
         , max(mms_dt) mms_dt
-        , max(dely_tm) dely_tm
+        , min(dely_tm) dely_tm
     from (
         select 
         device_id 
