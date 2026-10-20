@@ -114,6 +114,7 @@
 									<td>T({{ received_info | selectattr(col, 'equalto', 'T') | list | length }}), F({{ received_info | selectattr(col, 'equalto', 'F') | list | length }})</td>
 									{% endfor %}
 									<td></td>
+									<td></td>
 								</tr>
 								{% for dev in received_info | groupby('device_id') %}
 								{% set rows = dev.list %}
