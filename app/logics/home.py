@@ -65,19 +65,18 @@ def upsert_received_info():
     # raw string: MySQL 리터럴에 '^\\+8210' 그대로 전달
     sql = text(r"""
     INSERT INTO devDB.received_info(device_id, receiver, tot_chk, sms_chk, mmm_chk, sms_dt, mms_dt,dely_tm)
-    select 
-    device_id 
-    , REGEXP_REPLACE(receiver, '^\\+8210', '010') as receiver 
-    , case when sms_dt >= chk_tm or mms_dt >= chk_tm then 'T' else 'F' end tot_chk
-    , case when sms_dt >= chk_tm then 'T' else 'F' end sms_chk
-    , case when mms_dt >= chk_tm then 'T' else 'F' end mmm_chk
-    , sms_dt
-    , mms_dt
-    ,dely_tm
+    select
+        device_id , receiver 
+        , case when max(sms_dt) >= max(chk_tm) or max(mms_dt) >= max(chk_tm) then 'T' else 'F' end tot_chk
+        , case when max(sms_dt) >= max(chk_tm) then 'T' else 'F' end sms_chk
+        , case when max(mms_dt) >= max(chk_tm) then 'T' else 'F' end mmm_chk
+        , max(sms_dt) sms_dt
+        , max(mms_dt) mms_dt
+        , max(dely_tm) dely_tm
     from (
         select 
         device_id 
-        , receiver	
+        , REGEXP_REPLACE(receiver, '^\\+8210', '010') as receiver	
         , max( case when COALESCE(image_filename, '')  = '' then created_at else STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s') end ) as sms_dt
         , max( case when COALESCE(image_filename, '') != '' then created_at else STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s') end ) as mms_dt
         , max(case when TIMESTAMPDIFF(MINUTE, received_at, created_at) > 5 then TIMESTAMPDIFF(MINUTE, received_at, created_at) else 0 end) as  dely_tm
@@ -85,17 +84,25 @@ def upsert_received_info():
         from received_messages
         where base_dt between date_format( NOW() - INTERVAL 2 day , '%Y%m%d') and date_format( NOW() - INTERVAL 0 day , '%Y%m%d')
         and COALESCE(device_id,'') != ''
-        AND COALESCE(SENDER, '') != ''
-        group by device_id, receiver
-    )  a
-    ON DUPLICATE KEY UPDATE
-        device_id   = values(device_id),
-        tot_chk     = values(tot_chk) ,
-        sms_chk     = values(sms_chk) ,
-        mmm_chk     = values(mmm_chk) ,
-        sms_dt      = values(sms_dt) ,
-        mms_dt      = values(mms_dt) ,
-        dely_tm     = values(dely_tm)
+        AND COALESCE(SENDER, '') != ''  
+        and use_yn = 'Y'
+        and receiver not in ('+821075126986','1234567890','+11002474588') #제외 전화번호
+        group by device_id, REGEXP_REPLACE(receiver, '^\\+8210', '010')
+        union all
+        select
+        device_id , receiver , sms_dt , mms_dt , dely_tm ,  NOW() - INTERVAL 18 HOUR chk_tm
+        from received_info        
+        where receiver not in ('1234567890','+11002474588','01075126986','+821075126986')
+    ) a
+    group by device_id , receiver 
+        ON DUPLICATE KEY UPDATE
+            device_id   = values(device_id),
+            tot_chk     = values(tot_chk) ,
+            sms_chk     = values(sms_chk) ,
+            mmm_chk     = values(mmm_chk) ,
+            sms_dt      = values(sms_dt)  ,
+            mms_dt      = values(mms_dt)  ,
+            dely_tm     = values(dely_tm)
     """)
     db.session.execute(sql)
     db.session.commit()
@@ -112,7 +119,7 @@ def get_received_info():
     , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by device_id) app_hour
     , dely_tm
     from received_info
-    where receiver not in ('1234567890','+11002474588')
+    where receiver not in ('1234567890','+11002474588','01075126986')
     order by 1,2,3
     """)
     result = db.session.execute(sql)
