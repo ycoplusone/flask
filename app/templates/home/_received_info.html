@@ -10,6 +10,7 @@
 				<th>MMS(시간)</th>
 				<th>App(시간)</th>
 				<th>지연시간</th>
+				<th>비고</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -19,6 +20,7 @@
 				{% for col in ['tot_chk', 'sms_chk', 'mmm_chk'] %}
 				<td>T({{ received_info | selectattr(col, 'equalto', 'T') | list | length }}), F({{ received_info | selectattr(col, 'equalto', 'F') | list | length }})</td>
 				{% endfor %}
+				<td></td>
 				<td></td>
 				<td></td>
 			</tr>
@@ -37,6 +39,11 @@
 				<td rowspan="{{ rows|length }}" class="merged val-{{ r.app_chk }}">{{ r.app_chk ~ ' (' ~r.app_hour ~ ')' }}</td>
 				{% endif %}
 				<td>{{ r.dely_tm }}</td>
+				<td>
+					<input type="text" class="form-control form-control-sm js-notes"
+						data-device-id="{{ r.device_id }}" data-receiver="{{ r.receiver }}"
+						value="{{ r.notes or '' }}" data-saved="{{ r.notes or '' }}" placeholder="비고 입력">
+				</td>
 			</tr>
 			{% endfor %}
 			{% endfor %}
