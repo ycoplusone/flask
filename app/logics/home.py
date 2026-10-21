@@ -82,7 +82,7 @@ def upsert_received_info():
         , max(case when TIMESTAMPDIFF(MINUTE, received_at, created_at) > 5 then TIMESTAMPDIFF(MINUTE, received_at, created_at) else 0 end) as  dely_tm
         , NOW() - INTERVAL 18 HOUR chk_tm
         from received_messages
-        where base_dt between date_format( NOW() - INTERVAL 2 day , '%Y%m%d') and date_format( NOW() - INTERVAL 0 day , '%Y%m%d')
+        where base_dt between date_format( NOW() - INTERVAL 0 day , '%Y%m%d') and date_format( NOW() - INTERVAL 0 day , '%Y%m%d')
         and COALESCE(device_id,'') != ''
         AND COALESCE(SENDER, '') != ''  
         and use_yn = 'Y'
