@@ -1,0 +1,48 @@
+{% if received_info %}
+<div style="overflow:auto">
+	<table class="table table-sm">
+		<thead>
+			<tr>
+				<th>기기ID</th>
+				<th>수신번호</th>
+				<th>전체</th>
+				<th>SMS(시간)</th>
+				<th>MMS(시간)</th>
+				<th>App(시간)</th>
+				<th>지연시간</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr class="sum-row">
+				<td>합계</td>
+				<td></td>
+				{% for col in ['tot_chk', 'sms_chk', 'mmm_chk'] %}
+				<td>T({{ received_info | selectattr(col, 'equalto', 'T') | list | length }}), F({{ received_info | selectattr(col, 'equalto', 'F') | list | length }})</td>
+				{% endfor %}
+				<td></td>
+				<td></td>
+			</tr>
+			{% for dev in received_info | groupby('device_id') %}
+			{% set rows = dev.list %}
+			{% for r in rows %}
+			<tr{% if r.tot_chk == 'F' %} class="chk-fail"{% endif %}>
+				{% if loop.first %}
+				<td rowspan="{{ rows|length }}" class="merged">{{ dev.grouper }}</td>
+				{% endif %}
+				<td><a href="sms:{{ r.receiver }}">{{ r.receiver }}</a></td>
+				<td class="val-{{ r.tot_chk }}">{{ r.tot_chk }}</td>
+				<td class="val-{{ r.sms_chk }}">{{ r.sms_chk ~ ' (' ~r.sms_hour ~ ')' }}</td>
+				<td class="val-{{ r.mmm_chk }}">{{ r.mmm_chk ~ ' (' ~r.mms_hour ~ ')' }}</td>
+				{% if loop.first %}
+				<td rowspan="{{ rows|length }}" class="merged val-{{ r.app_chk }}">{{ r.app_chk ~ ' (' ~r.app_hour ~ ')' }}</td>
+				{% endif %}
+				<td>{{ r.dely_tm }}</td>
+			</tr>
+			{% endfor %}
+			{% endfor %}
+		</tbody>
+	</table>
+</div>
+{% else %}
+	<p>데이터가 없습니다.</p>
+{% endif %}

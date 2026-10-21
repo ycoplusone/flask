@@ -14,6 +14,12 @@ def home():
     return render_template('home/app.html', remaining_count=remaining_count, week_counts=week_counts, text_counts=text_counts, received_info=received_info)
 
 
+@main_bp.route('/received-info')
+def received_info():
+    # 대시보드 SMS/MMS 수신 체크 영역 새로 고침용 (부분 HTML)
+    return render_template('home/_received_info.html', received_info=get_received_info())
+
+
 @main_bp.route('/test')
 def test():
     remaining_count = get_remaining_collection_count()
