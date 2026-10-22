@@ -20,8 +20,15 @@
 				{% for col in ['tot_chk', 'sms_chk', 'mmm_chk'] %}
 				<td>T({{ received_info | selectattr(col, 'equalto', 'T') | list | length }}), F({{ received_info | selectattr(col, 'equalto', 'F') | list | length }})</td>
 				{% endfor %}
-				<td></td>
-				<td></td>
+				{# App(시간)은 기기 단위로 병합 표시되므로 기기별 1건으로 집계 #}
+				{% set apps = received_info | groupby('device_id') | map(attribute='list') | map('first') | list %}
+				<td>T({{ apps | selectattr('app_chk', 'equalto', 'T') | list | length }}), F({{ apps | selectattr('app_chk', 'equalto', 'F') | list | length }})</td>
+				{# 지연시간: 10분 미만 T, 10분 이상 F (값 없음은 제외) #}
+				{% set dely = namespace(t=0, f=0) %}
+				{% for r in received_info if r.dely_tm is not none %}
+				{% if r.dely_tm < 10 %}{% set dely.t = dely.t + 1 %}{% else %}{% set dely.f = dely.f + 1 %}{% endif %}
+				{% endfor %}
+				<td>T({{ dely.t }}), F({{ dely.f }})</td>
 				<td></td>
 			</tr>
 			{% for dev in received_info | groupby('device_id') %}
