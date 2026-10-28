@@ -123,7 +123,7 @@ def get_received_info():
     , dely_tm
     , notes    
     from received_info a
-    left outer join ( select device_id , min(case when tot_chk='F' then 9999999 else dely_tm end) dd from received_info where tot_chk = 'F'  or dely_tm >= 5    group by device_id ) b on (a.device_id  = b.device_id)
+    left outer join ( select device_id , max(case when tot_chk='F' then 9999999 else dely_tm end) dd from received_info where tot_chk = 'F'  or dely_tm >= 5    group by device_id ) b on (a.device_id  = b.device_id)
     where a.receiver not in ('1234567890','+11002474588','01075126986','01099999999','+11081812350','+13111288616')
     order by 1 desc,2,3 ,4    
     """)
