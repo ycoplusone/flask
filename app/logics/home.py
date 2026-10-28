@@ -72,27 +72,29 @@ def upsert_received_info():
         , case when max(mms_dt) >= max(chk_tm) then 'T' else 'F' end mmm_chk
         , max(sms_dt) sms_dt
         , max(mms_dt) mms_dt
-        , min(dely_tm) dely_tm
+        , max(case when gubun ='a' then dely_tm_a else dely_tm_b end ) dely_tm
     from (
         select 
         device_id 
         , REGEXP_REPLACE(receiver, '^\\+8210', '010') as receiver	
         , max( case when COALESCE(image_filename, '')  = '' then created_at else STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s') end ) as sms_dt
         , max( case when COALESCE(image_filename, '') != '' then created_at else STR_TO_DATE('1999-12-31 00:00:00', '%Y-%m-%d %H:%i:%s') end ) as mms_dt
-        , max(case when TIMESTAMPDIFF(MINUTE, received_at, created_at) > 5 then TIMESTAMPDIFF(MINUTE, received_at, created_at) else 0 end) as  dely_tm
+        , max(case when TIMESTAMPDIFF(MINUTE, received_at, created_at) > 5 then TIMESTAMPDIFF(MINUTE, received_at, created_at) else 0 end) as  dely_tm_a
+        , 0 dely_tm_b
         , NOW() - INTERVAL 18 HOUR chk_tm
+        , 'a' as gubun
         from received_messages
         where base_dt between date_format( NOW() - INTERVAL 0 day , '%Y%m%d') and date_format( NOW() - INTERVAL 0 day , '%Y%m%d')
         and COALESCE(device_id,'') != ''
         AND COALESCE(SENDER, '') != ''  
         and use_yn = 'Y'
-        and receiver not in ('+821075126986','1234567890','+11002474588') #제외 전화번호
+        and receiver not in ('+821075126986','1234567890','+11002474588','01099999999','+11081812350','+13111288616') #제외 전화번호
         group by device_id, REGEXP_REPLACE(receiver, '^\\+8210', '010')
         union all
         select
-        device_id , receiver , sms_dt , mms_dt , dely_tm ,  NOW() - INTERVAL 18 HOUR chk_tm
+        device_id , receiver , sms_dt , mms_dt ,0 dely_tm_a, dely_tm dely_tm_b ,  NOW() - INTERVAL 18 HOUR chk_tm , 'b' as gubun
         from received_info        
-        where receiver not in ('1234567890','+11002474588','01075126986','+821075126986')
+        where receiver not in ('1234567890','+11002474588','01075126986','+821075126986','01099999999','+11081812350','+13111288616')
     ) a
     group by device_id , receiver 
         ON DUPLICATE KEY UPDATE
@@ -112,16 +114,18 @@ def get_received_info():
     upsert_received_info()
     sql = text("""
     select 
-    device_id,receiver,tot_chk,sms_chk,mmm_chk
-    , max(app_chk) over(partition by device_id) app_chk 
+    COALESCE(b.dd,0) sort
+    , a.device_id,receiver,tot_chk,sms_chk,mmm_chk
+    , max(app_chk) over(partition by a.device_id) app_chk 
     , TIMESTAMPDIFF(hour, sms_dt, now()) sms_hour
     , TIMESTAMPDIFF(hour, mms_dt, now()) mms_hour
-    , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by device_id) app_hour
+    , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by a.device_id) app_hour
     , dely_tm
-    , notes
-    from received_info
-    where receiver not in ('1234567890','+11002474588','01075126986')
-    order by 1,2,3
+    , notes    
+    from received_info a
+    left outer join ( select device_id , min(case when tot_chk='F' then 9999999 else dely_tm end) dd from received_info where tot_chk = 'F'  or dely_tm >= 5    group by device_id ) b on (a.device_id  = b.device_id)
+    where a.receiver not in ('1234567890','+11002474588','01075126986','01099999999','+11081812350','+13111288616')
+    order by 1 desc,2,3 ,4    
     """)
     result = db.session.execute(sql)
     return [dict(row) for row in result.mappings()]

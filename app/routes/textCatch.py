@@ -1,12 +1,12 @@
 import os
 import base64
 import mimetypes
-from flask import Blueprint, render_template,Flask, request, jsonify, send_from_directory, send_file, abort, flash, redirect, url_for
+from flask import Blueprint, json, render_template,Flask, request, jsonify, send_from_directory, send_file, abort, flash, redirect, url_for
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
-from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip
+from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
@@ -30,6 +30,11 @@ def TextCatch():
     # curl -X POST http://localhost:5000/api/textcatch ^
     # -H "Content-Type: application/json" ^
     # -d "{\"type\":\"MMS\",\"sender\":\"01012345678\",\"receiver\":\"01099999999\",\"body\":\"Check this image\",\"images\":[{\"mime_type\":\"image/jpeg\",\"data\":\"iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAEklEQVR4nGP4z8CAB+GTG8HSALfKY52fTcuYAAAAAElFTkSuQmCC\"}],\"timestamp\":1695123456789}"
+
+    # REM HEARTBEAT 전송 예시 (메시지 내용은 비워도 됨)
+    # curl -i -X POST "http://localhost:5000/api/textcatch" ^
+    # -H "Content-Type: application/json; charset=utf-8" ^
+    # -d "{\"type\":\"HEARTBEAT\",\"sender\":\"\",\"receiver\":\"01099999999\",\"body\":\"TextCatch test\",\"timestamp\":1793080000000,\"device_id\":\"test-device-0001\",\"msg_id\":\"hb-test-0001\",\"received_at\":1793080000000,\"sent_at\":1793080000120,\"attempt\":1,\"path\":\"worker\",\"status\":{\"retry_count\":0,\"inflight_count\":0,\"hold_count\":2,\"hold_oldest_received_at\":1793000000000,\"hold_reasons\":{\"404\":2},\"hold_dropped\":0,\"corrupt_count\":0,\"mms_unsent\":0,\"mms_pending_download\":1,\"mms_pending_oldest\":1793070000000}}"    
 
     # 1. JSON 파싱
     payload = request.get_json(silent=True)
@@ -55,10 +60,47 @@ def TextCatch():
     sent_at         = payload.get('sent_at' ) #발   신 시간 (없으면 현재 시간 사용)
     attempt         = payload.get('attempt'        , '1')   #시도횧수 (없으면 1회)
     path            = payload.get('path'           , '')   #메세지고유값(없으면 빈값) 중복값 발생은 이후 체크한다.
-    msg_id          = payload.get('msg_id'         , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.
+    msg_id          = payload.get('msg_id'         , '')   #메세지ID(없으면 빈값) 중복값 발생은 이후 체크한다.   
+    
+    # status는 JSON 객체이므로 문자열로 변환하여 DB에 저장 (없으면 빈 JSON)
+    # 기본값을 문자열 '{}'로 두면 status 없는 SMS/MMS에서 .get() 호출 시 AttributeError 발생 → dict로 보정
+    status          = payload.get('status') or {}
+    if not isinstance(status, dict):
+        status = {}
+    # HEARTBEAT 수신 시, received_info 테이블에 heartbeat_dt 갱신
+    hold_oldest_received_at = status.get('hold_oldest_received_at')
+    mms_pending_oldest      = status.get('mms_pending_oldest')
+    if hold_oldest_received_at:
+        try:
+            hold_oldest_received_time = datetime.fromtimestamp(int(hold_oldest_received_at) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+        except (TypeError, ValueError):
+            hold_oldest_received_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        hold_oldest_received_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    #if not receiver:
-    #    return jsonify({"status": "error", "message": "sender, receiver are required"}), 400
+    if mms_pending_oldest:
+        try:
+            mms_pending_oldest_time = datetime.fromtimestamp(int(mms_pending_oldest) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+        except (TypeError, ValueError):
+            mms_pending_oldest_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        mms_pending_oldest_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')    
+
+    
+    
+    retry_count         =  status.get('retry_count', 0)
+    inflight_count      = status.get('inflight_count', 0)
+    hold_count          = status.get('hold_count', 0)
+    hold_oldest_received_time = hold_oldest_received_time
+    hold_reasons        = status.get('hold_reasons', {})
+    hold_dropped        = status.get('hold_dropped', 0)
+    corrupt_count       = status.get('corrupt_count', 0)
+    mms_unsent          = status.get('mms_unsent', 0)
+    mms_pending_download    = status.get('mms_pending_download', 0)
+    mms_pending_oldest_time = mms_pending_oldest_time
+    
+
+    
 
     # 3. timestamp(밀리초) -> datetime 문자열 변환 (없으면 현재 시간 사용)
     if timestamp:
@@ -106,15 +148,19 @@ def TextCatch():
             image_filename = None
 
     # 5. 데이터 확인 (DB 적재는 추후 처리)
-    print(f"[{received_time}] ({msg_type}) From: {sender} -> To: {receiver}")
-    print(f"device_id: {device_id}")
-    print(f"내용: {message_body}")
-    if image_filename:
-        print(f"첨부 이미지: {image_filename}")
+    #print(f"[{received_time}] ({msg_type}) From: {sender} -> To: {receiver}")
+    #print(f"device_id: {device_id}")
+    #print(f"내용: {message_body}")
+    #if image_filename:
+    #    print(f"첨부 이미지: {image_filename}")
 
     # TODO: DB 입력 처리
     # image_filename이 None이면 f-string INSERT에서 문자열 'None'으로 저장되므로 빈 문자열로 전달
-    setTextCatch(sender, receiver, message_body, received_time,device_id , send_time , attempt,path,msg_id,image_filename or '' )
+    setTextCatch(sender     , receiver     , message_body     , received_time     ,device_id      , send_time   , attempt    ,path    ,msg_id, image_filename or '' )
+    
+    if msg_type == 'HEARTBEAT' and status:
+        setAppLog(receiver , retry_count , inflight_count , hold_count , hold_oldest_received_time , hold_reasons , hold_dropped , corrupt_count , mms_unsent , mms_pending_download , mms_pending_oldest_time)
+
     return jsonify({"status": "success", "message": "Data received successfully"}), 200
 
 

@@ -1,14 +1,14 @@
 import os
+import json
 import zipfile
 from io import BytesIO
-
 from sqlalchemy import bindparam, text
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 from app import db
 
-def setTextCatch(sender:str , receiver:str , message_body:str , received_time:str , device_id:str , sent_at:str ,attempt:str ,path:str,msg_id:str, image_filename:str = ''):
+def setTextCatch( sender:str , receiver:str , message_body:str , received_time:str , device_id:str , sent_at:str ,attempt:str ,path:str,msg_id:str, image_filename:str = ''):
     """
     텍스트 수신 관련 설정을 초기화하는 함수.
     sender          = request.form.get('sender')    #수신자
@@ -73,6 +73,50 @@ def setTextCatch(sender:str , receiver:str , message_body:str , received_time:st
 
     db.session.execute(upd_sql, {'receiver': receiver or '1234567890', 'device_id': device_id or 'test'})
     db.session.commit()
+
+def setAppLog( receiver , retry_count , inflight_count , hold_count , hold_oldest_received_time , hold_reasons , hold_dropped , corrupt_count , mms_unsent , mms_pending_download , mms_pending_oldest_time ):
+    '''received_app_info 테이블에 HEARTBEAT 수신 시 상태를 기록한다. '''
+    heartbeat_sql = text("""
+            INSERT INTO devDB.received_app_info
+            (receiver, retry_count, inflight_count, hold_count, hold_oldest_received_at, hold_reasons, hold_dropped, corrupt_count, mms_unsent, mms_pending_download, mms_pending_oldest)
+            VALUES(:receiver, :retry_count, :inflight_count, :hold_count, :hold_oldest_received_at, :hold_reasons, :hold_dropped, :corrupt_count, :mms_unsent, :mms_pending_download, :mms_pending_oldest)
+            ON DUPLICATE KEY UPDATE
+                retry_count = VALUES(retry_count),
+                inflight_count = VALUES(inflight_count),
+                hold_count = VALUES(hold_count),
+                hold_oldest_received_at = VALUES(hold_oldest_received_at),
+                hold_reasons = VALUES(hold_reasons),
+                hold_dropped = VALUES(hold_dropped),
+                corrupt_count = VALUES(corrupt_count),
+                mms_unsent = VALUES(mms_unsent),
+                mms_pending_download = VALUES(mms_pending_download),
+                mms_pending_oldest = VALUES(mms_pending_oldest),
+                updated_dt = NOW()
+        """)
+    params = {
+        'receiver': receiver or '1234567890',
+        'retry_count': retry_count ,
+        'inflight_count': inflight_count,
+        'hold_count': hold_count , 
+        'hold_oldest_received_at': hold_oldest_received_time,
+        # dict는 바인딩 파라미터로 넘길 수 없으므로 JSON 문자열로 변환
+        'hold_reasons': json.dumps(hold_reasons or {}) ,
+        'hold_dropped': hold_dropped , 
+        'corrupt_count': corrupt_count , 
+        'mms_unsent': mms_unsent , 
+        'mms_pending_download': mms_pending_download , 
+        'mms_pending_oldest': mms_pending_oldest_time
+    }
+
+    # 디버그용: 바인딩 값이 채워진 실제 쿼리 출력
+    try:
+        db.session.execute(heartbeat_sql, params)
+        db.session.commit()
+    except Exception as e:
+        print(f"[setAppLog] 쿼리 출력 실패: {e} / params={params}")
+
+
+
 
 
 def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = '', msg_type: str = ''):
