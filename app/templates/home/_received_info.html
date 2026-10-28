@@ -9,7 +9,7 @@
 				<th>SMS(시간)</th>
 				<th>MMS(시간)</th>
 				<th>App(시간)</th>
-				<th>지연시간</th>
+				<th>지연시간(분)</th>
 				<th>비고</th>
 			</tr>
 		</thead>
@@ -31,12 +31,13 @@
 				<td>T({{ dely.t }}), F({{ dely.f }})</td>
 				<td></td>
 			</tr>
-			{% for dev in received_info | groupby('device_id') %}
+			{# groupby는 device_id로 재정렬하므로 sort 컬럼 기준으로 다시 정렬 (내림차순, 같으면 device_id 내림차순) #}
+			{% for dev in received_info | groupby('device_id') | sort(attribute='list.0.sort,grouper', reverse=true) %}
 			{% set rows = dev.list %}
 			{% for r in rows %}
 			<tr{% if r.tot_chk == 'F' %} class="chk-fail"{% endif %}>
 				{% if loop.first %}
-				<td rowspan="{{ rows|length }}" class="merged">{{ dev.grouper }}</td>
+				<td rowspan="{{ rows|length }}" class="merged{% if (r.sort or 0) | int != 0 %} dev-warn{% endif %}">{{ dev.grouper }}</td>
 				{% endif %}
 				<td><a href="sms:{{ r.receiver }}">{{ r.receiver }}</a></td>
 				<td class="val-{{ r.tot_chk }}">{{ r.tot_chk }}</td>
