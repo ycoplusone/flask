@@ -115,7 +115,8 @@ def get_received_info():
     sql = text("""
     select 
     case when COALESCE(min(c.hold_count + c.mms_unsent) over(partition by a.device_id),0) >= 1 then 9999999 else COALESCE(b.dd,0) end sort
-    , a.device_id,a.receiver,tot_chk,sms_chk,mmm_chk
+    , substr(a.device_id,1,5) device_id
+    , a.receiver,tot_chk,sms_chk,mmm_chk
     , max(app_chk) over(partition by a.device_id) app_chk 
     , TIMESTAMPDIFF(hour, sms_dt, now()) sms_hour
     , TIMESTAMPDIFF(hour, mms_dt, now()) mms_hour
