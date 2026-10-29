@@ -72,7 +72,7 @@ def upsert_received_info():
         , case when max(mms_dt) >= max(chk_tm) then 'T' else 'F' end mmm_chk
         , max(sms_dt) sms_dt
         , max(mms_dt) mms_dt
-        , max(case when gubun ='a' then dely_tm_a else dely_tm_b end ) dely_tm
+        , case when min(gubun) = 'a' then max(dely_tm_a) else max(dely_tm_b) end dely_tm
     from (
         select 
         device_id 
@@ -84,7 +84,7 @@ def upsert_received_info():
         , NOW() - INTERVAL 18 HOUR chk_tm
         , 'a' as gubun
         from received_messages
-        where base_dt between date_format( NOW() - INTERVAL 0 day , '%Y%m%d') and date_format( NOW() - INTERVAL 0 day , '%Y%m%d')
+        where base_dt = date_format( NOW() - INTERVAL 0 day , '%Y%m%d') 
         and COALESCE(device_id,'') != ''
         AND COALESCE(SENDER, '') != ''  
         and use_yn = 'Y'
