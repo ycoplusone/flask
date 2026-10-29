@@ -126,7 +126,7 @@ def get_received_info():
     , min(c.mms_unsent) over(partition by a.device_id) mms_unsent
     , case when c.receiver is not null then 'T' else 'F' end pk_receiver
     from received_info a
-    left outer join ( select device_id , max(case when tot_chk='F' then 9999999 else dely_tm end) dd from received_info where tot_chk = 'F'  or dely_tm >= 5    group by device_id ) b on (a.device_id  = b.device_id)
+    left outer join ( select device_id , max(case when tot_chk='F' then 9999999 else dely_tm end)+sum(case when tot_chk='F' then 1 else 0 end ) dd from received_info where tot_chk = 'F'  or dely_tm >= 5    group by device_id ) b on (a.device_id  = b.device_id)
     left outer join received_app_info c on ( substr(a.receiver,-8) = substr(c.receiver,-8) )
     where a.receiver not in ('1234567890','+11002474588','01075126986','01099999999','+11081812350','+13111288616')
     order by 1 desc,2,3 ,4    
