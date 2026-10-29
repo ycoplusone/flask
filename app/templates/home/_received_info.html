@@ -10,6 +10,8 @@
 				<th>MMS(시간)</th>
 				<th>App(시간)</th>
 				<th>지연시간(분)</th>
+				<th>SMS대기</th>
+				<th>MMS대기</th>
 				<th>비고</th>
 			</tr>
 		</thead>
@@ -29,6 +31,9 @@
 				{% if r.dely_tm < 10 %}{% set dely.t = dely.t + 1 %}{% else %}{% set dely.f = dely.f + 1 %}{% endif %}
 				{% endfor %}
 				<td>T({{ dely.t }}), F({{ dely.f }})</td>
+				{# SMS/MMS대기도 기기 단위 병합 표시이므로 기기별 1건으로 합산 #}
+				<td>{{ apps | map(attribute='hold_count') | map('default', 0, true) | sum }}</td>
+				<td>{{ apps | map(attribute='mms_unsent') | map('default', 0, true) | sum }}</td>
 				<td></td>
 			</tr>
 			{# groupby는 device_id로 재정렬하므로 sort 컬럼 기준으로 다시 정렬 (내림차순, 같으면 device_id 내림차순) #}
@@ -39,7 +44,7 @@
 				{% if loop.first %}
 				<td rowspan="{{ rows|length }}" class="merged{% if (r.sort or 0) | int != 0 %} dev-warn{% endif %}">{{ dev.grouper }}</td>
 				{% endif %}
-				<td><a href="sms:{{ r.receiver }}">{{ r.receiver }}</a></td>
+				<td><a href="sms:{{ r.receiver }}"{% if r.pk_receiver == 'T' %} class="pk-receiver"{% endif %}>{{ r.receiver }}</a></td>
 				<td class="val-{{ r.tot_chk }}">{{ r.tot_chk }}</td>
 				<td class="val-{{ r.sms_chk }}">{{ r.sms_chk ~ ' (' ~r.sms_hour ~ ')' }}</td>
 				<td class="val-{{ r.mmm_chk }}">{{ r.mmm_chk ~ ' (' ~r.mms_hour ~ ')' }}</td>
@@ -47,6 +52,10 @@
 				<td rowspan="{{ rows|length }}" class="merged val-{{ r.app_chk }}">{{ r.app_chk ~ ' (' ~r.app_hour ~ ')' }}</td>
 				{% endif %}
 				<td>{{ r.dely_tm }}</td>
+				{% if loop.first %}
+				<td rowspan="{{ rows|length }}" class="merged">{{ r.hold_count if r.hold_count is not none else '' }}</td>
+				<td rowspan="{{ rows|length }}" class="merged">{{ r.mms_unsent if r.mms_unsent is not none else '' }}</td>
+				{% endif %}
 				<td>
 					<input type="text" class="form-control form-control-sm js-notes"
 						data-device-id="{{ r.device_id }}" data-receiver="{{ r.receiver }}"
