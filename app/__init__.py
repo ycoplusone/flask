@@ -61,7 +61,8 @@ def create_app():
     app.config.from_object('config.DevelopmentConfig')
     # 개발 환경에서만 디버그 모드 활성화
     if app.config['DEBUG']:
-        print(f"DEBUG mode is ON. Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}", file=sys.stderr)
+        #print(f"DEBUG mode is ON. Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}", file=sys.stderr)
+        pass
 
     # 데이터베이스 객체와 앱 연결
     db.init_app(app)
