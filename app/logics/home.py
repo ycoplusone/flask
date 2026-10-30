@@ -111,6 +111,9 @@ def upsert_received_info():
 
 
 def get_received_info():
+    '''
+    정렬순서를 8+4+2+1 로 가산해서 순서를 정함.
+    '''
     upsert_received_info()
     sql = text("""
     select 
