@@ -111,10 +111,16 @@ def upsert_received_info():
 
 
 def get_received_info():
+    '''
+    정렬순서를 8+4+2+1 로 가산해서 순서를 정함.
+    '''
     upsert_received_info()
     sql = text("""
     select 
-    case when COALESCE(min(c.hold_count + c.mms_unsent) over(partition by a.device_id),0) >= 1 then 9999999 else COALESCE(b.dd,0) end sort
+    b.s0_tot 
+    + b.s2_dely 
+    + case when COALESCE(min(c.hold_count + c.mms_unsent) over(partition by a.device_id),0) > 0 then 4 else 0 end
+    + case when min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id) > 3 then 1 else 0 end as sort
     , substr(a.device_id,1,5) device_id
     , a.receiver,tot_chk,sms_chk,mmm_chk
     , max(app_chk) over(partition by a.device_id) app_chk 
@@ -128,7 +134,12 @@ def get_received_info():
     , case when c.receiver is not null then 'T' else 'F' end pk_receiver
     , min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id) last_tm
     from received_info a
-    left outer join ( select device_id , max(case when tot_chk='F' then 9999999 else dely_tm end)+sum(case when tot_chk='F' then 1 else 0 end ) dd from received_info where tot_chk = 'F'  or dely_tm >= 5    group by device_id ) b on (a.device_id  = b.device_id)
+    left outer join ( 
+    		select device_id 
+    		, sum(case when tot_chk='F' then 8 else 0 end ) s0_tot
+    		, max(case when dely_tm >= 5  then 2 else 0 end ) s2_dely
+    		from received_info     
+    		group by device_id     		) b on (a.device_id  = b.device_id)
     left outer join received_app_info c on ( substr(a.receiver,-8) = substr(c.receiver,-8) )
     where a.receiver not in ('1234567890','+11002474588','01075126986','01099999999','+11081812350','+13111288616')
     order by 1 desc,2,3 ,4    
