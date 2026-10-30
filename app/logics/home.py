@@ -112,7 +112,11 @@ def upsert_received_info():
 
 def get_received_info():
     '''
-    정렬순서를 8+4+2+1 로 가산해서 순서를 정함.
+    정렬순서를
+    16 : app 갱신 최근 3시간 초과 의 건
+    8  : tot_chk 가 f인건
+    4  : 미전송건이 발생
+    2  : 지연이 발생건
     '''
     upsert_received_info()
     sql = text("""
@@ -120,7 +124,7 @@ def get_received_info():
     b.s0_tot 
     + b.s2_dely 
     + case when COALESCE(min(c.hold_count + c.mms_unsent) over(partition by a.device_id),0) > 0 then 4 else 0 end
-    + case when min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id) > 3 then 1 else 0 end as sort
+    + case when min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id) > 3 then 16 else 0 end as sort
     , substr(a.device_id,1,5) device_id
     , a.receiver,tot_chk,sms_chk,mmm_chk
     , max(app_chk) over(partition by a.device_id) app_chk 
