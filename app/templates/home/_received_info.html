@@ -10,8 +10,8 @@
 				<th>MMS(시간)</th>
 				<th>App(시간)</th>
 				<th>지연시간(분)</th>
-				<th>SMS대기</th>
-				<th>MMS대기</th>
+				<th>SMS/MMS대기</th>
+				<th>갱신시간</th>
 				<th>비고</th>
 			</tr>
 		</thead>
@@ -32,8 +32,13 @@
 				{% endfor %}
 				<td>T({{ dely.t }}), F({{ dely.f }})</td>
 				{# SMS/MMS대기도 기기 단위 병합 표시이므로 기기별 1건으로 합산 #}
-				<td>{{ apps | map(attribute='hold_count') | map('default', 0, true) | sum }}</td>
-				<td>{{ apps | map(attribute='mms_unsent') | map('default', 0, true) | sum }}</td>
+				<td>{{ apps | map(attribute='hold_count') | map('default', 0, true) | sum }} / {{ apps | map(attribute='mms_unsent') | map('default', 0, true) | sum }}</td>
+				{# 갱신시간: 기기별 1건, 2시간 이하 T, 2시간 초과 F (값 없음은 제외) #}
+				{% set last = namespace(t=0, f=0) %}
+				{% for r in apps if r.last_tm is not none %}
+				{% if r.last_tm <= 2 %}{% set last.t = last.t + 1 %}{% else %}{% set last.f = last.f + 1 %}{% endif %}
+				{% endfor %}
+				<td>T({{ last.t }}), F({{ last.f }})</td>
 				<td></td>
 			</tr>
 			{# groupby는 device_id로 재정렬하므로 sort 컬럼 기준으로 다시 정렬 (내림차순, 같으면 device_id 내림차순) #}
@@ -53,8 +58,8 @@
 				{% endif %}
 				<td>{{ r.dely_tm }}</td>
 				{% if loop.first %}
-				<td rowspan="{{ rows|length }}" class="merged">{{ r.hold_count if r.hold_count is not none else '' }}</td>
-				<td rowspan="{{ rows|length }}" class="merged">{{ r.mms_unsent if r.mms_unsent is not none else '' }}</td>
+				<td rowspan="{{ rows|length }}" class="merged">{% if r.hold_count is not none or r.mms_unsent is not none %}{{ r.hold_count or 0 }} / {{ r.mms_unsent or 0 }}{% endif %}</td>
+				<td rowspan="{{ rows|length }}" class="merged">{{ r.last_tm if r.last_tm is not none else '' }}</td>
 				{% endif %}
 				<td>
 					<input type="text" class="form-control form-control-sm js-notes"
