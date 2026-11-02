@@ -24,12 +24,9 @@ def received_info():
 def received_info_notes():
     # 대시보드 SMS/MMS 수신 체크 비고 저장
     data = request.get_json(silent=True) or {}
-    device_id = data.get('device_id')
     receiver = data.get('receiver')
-    if not device_id or not receiver:
-        return jsonify({"status": "error", "message": "device_id, receiver are required"}), 400
     notes = (data.get('notes') or '').strip()
-    cnt = update_received_notes(device_id, receiver, notes or None)
+    cnt = update_received_notes(receiver, notes or None)
     if not cnt:
         return jsonify({"status": "error", "message": "대상 데이터가 없습니다."}), 404
     return jsonify({"status": "ok"})

@@ -83,6 +83,12 @@
         justify-content: space-between;
         gap: 10px;
         margin-bottom: 10px;
+        padding: 8px 0;
+        /* 스크롤해도 기능 버튼이 보이도록 상단 고정 */
+        position: sticky;
+        top: 0;
+        z-index: 50;               /* 모바일 상단 메뉴(.nav-menu z-index: 100) 아래 */
+        background: #fff;
     }
     .list-header .actions {
         display: flex;
@@ -141,7 +147,18 @@
         .search-form .field { flex: 1 1 calc(50% - 5px); min-width: 0; }
         .search-form .field input { width: 100%; }
         .btn-search { flex: 1 1 100%; }
-        .list-header .actions { width: 100%; }
+        /* 모바일은 화면이 좁아 조회 건수는 두고 버튼만 고정, 고정 메뉴 바로 아래에 붙임 */
+        .list-header { display: contents; }
+        .list-header .result-count { margin-bottom: 10px; }
+        .list-header .actions {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            position: sticky;
+            top: var(--nav-height, 50px);
+            z-index: 50;
+            background: #fff;
+        }
         .list-header .actions a { flex: 1 1 0; padding: 10px 8px; }
         .msg-table { table-layout: auto; }
         .msg-table tr.is-selected { background: #fff4f2; border-color: #f1b0a8; }
@@ -222,11 +239,11 @@
             </form>
             <a class="btn-excel"
                href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}">
-                ⬇ 엑셀 다운로드
+                ⬇ 엑셀
             </a>
             <a class="btn-zip"
                href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}">
-                🗂 이미지 다운로드
+                🗂 이미지
             </a>
         </div>
     </div>
@@ -308,6 +325,14 @@
 </div>
 
 <script>
+// 모바일 고정 버튼이 상단 메뉴 바로 아래에 붙도록 메뉴 높이 전달
+function syncNavHeight() {
+    const nav = document.querySelector('.nav-menu');
+    document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+}
+syncNavHeight();
+window.addEventListener('resize', syncNavHeight);
+
 // 조회 조건 입력값 지우기 (x 버튼)
 document.querySelectorAll('.input-clear .btn-clear').forEach(btn => {
     btn.addEventListener('click', () => {
