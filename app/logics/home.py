@@ -125,7 +125,7 @@ def get_received_info():
     + b.s2_dely 
     + case when COALESCE(min(c.hold_count + c.mms_unsent) over(partition by a.device_id),0) > 0 then 4 else 0 end
     + case when min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id) > 3 then 16 else 0 end as sort
-    , substr(a.device_id,1,5) device_id
+    , substr(a.device_id,1,5) as  device_id
     , a.receiver,tot_chk,sms_chk,mmm_chk
     , max(app_chk) over(partition by a.device_id) app_chk 
     , TIMESTAMPDIFF(hour, sms_dt, now()) sms_hour
@@ -133,10 +133,10 @@ def get_received_info():
     , min(TIMESTAMPDIFF(hour, app_dt, now())) over(partition by a.device_id) app_hour
     , dely_tm
     , notes    
-    , min(c.hold_count) over(partition by a.device_id) hold_count
-    , min(c.mms_unsent) over(partition by a.device_id) mms_unsent
+    , COALESCE(min(c.hold_count) over(partition by a.device_id),0) hold_count
+    , COALESCE(min(c.mms_unsent) over(partition by a.device_id),0) mms_unsent
     , case when c.receiver is not null then 'T' else 'F' end pk_receiver
-    , min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id) last_tm
+    , COALESCE(min(TIMESTAMPDIFF(hour,c.updated_dt, now())) over(partition by a.device_id),0) last_tm
     from received_info a
     left outer join ( 
     		select device_id 
@@ -146,19 +146,19 @@ def get_received_info():
     		group by device_id     		) b on (a.device_id  = b.device_id)
     left outer join received_app_info c on ( substr(a.receiver,-8) = substr(c.receiver,-8) )
     where a.receiver not in ('1234567890','+11002474588','01075126986','01099999999','+11081812350','+13111288616')
+    AND a.device_id NOT IN  ('a542fc912eb8af04','a4e6264327745d6b')
     order by 1 desc,2,3 ,4    
     """)
     result = db.session.execute(sql)
     return [dict(row) for row in result.mappings()]
 
 
-def update_received_notes(device_id, receiver, notes) -> int:
+def update_received_notes(receiver, notes) -> int:
     sql = text("""
     update received_info
     set notes = :notes
-    where device_id = :device_id
-      and receiver  = :receiver
+    where receiver  = :receiver
     """)
-    result = db.session.execute(sql, {'notes': notes, 'device_id': device_id, 'receiver': receiver})
+    result = db.session.execute(sql, {'notes': notes, 'receiver': receiver})
     db.session.commit()
     return result.rowcount
