@@ -51,6 +51,22 @@ pip install -r requirements.txt
 ## 6. 일자별 작업 내역
 
 *이 섹션에는 각 날짜별 주요 작업 내용, 이슈, 해결 과정 등을 기록합니다.*
+### 2026-11-02
+- **작업:** Windows Terminal 새 창에 작업용 탭(OracleCloud, 시각화, 시각화[실행], flask, flask[실행], TextCatch)을 한 번에 여는 스크립트를 기록함.
+- **이슈:** 특이사항 없음
+- **결과:** 아래 스크립트 원문을 그대로 보관함.
+
+```bat
+wt -w new new-tab --title "OracleCloud";^
+new-tab --title "시각화" wsl -e bash -lic "cd ~/proto_dashboard && claude\; exec bash" ;^
+new-tab --title "시각화[실행]" wsl -e bash -lic "cd ~/proto_dashboard && source .venv/bin/activate && streamlit run app.py\; exec bash";^
+new-tab --title "flask" wsl -e bash -lic "cd ~/flask && claude\; exec bash";^
+new-tab --title "flask[실행]" wsl -e bash -lic "cd ~/flask && source ~/flask/.venv/bin/activate && python ~/flask/run.py\; exec bash";^
+new-tab --title "퀀트" wsl -e bash -lic "cd ~/canary_dagger &&claude\; exec bash";^
+new-tab --title "퀀트[실행]" wsl -e bash -lic "cd ~/canary_dagger && source ~/canary_dagger/.venv/bin/activate && python main.py \; exec bash";^
+new-tab --title "TextCatch" powershell -NoExit -Command "cd D:\android\textcatch\; Get-Location\; claude";
+```
+
 ### 2026-08-06
 - **작업:** Docker 배포 환경 구성 (`Dockerfile`, `docker-compose.yml`, `.dockerignore`, `docker-install.sh` 작성).
 - **이슈:** 특이사항 없음

@@ -22,7 +22,8 @@ def create_app():
     @app.before_request
     def check_device_auth():
         # 로그인 페이지나 정적 파일(CSS 등) 접근 시에는 체크 건너뛰기
-        if request.endpoint in ['loging_bp.login', 'static','textCatch.receive_message','textCatch.TextCatch','job_log_bp.job_log']:
+        print(f"request.endpoint : {request.endpoint}")
+        if request.endpoint in ['loging_bp.login', 'static','textCatch.receive_message','textCatch.TextCatch','textCatch.textCatchApkVersion','textCatch.textCatchApkDownload','job_log_bp.job_log']:
             return
 
         # 브라우저 쿠키에서 device_token 가져오기

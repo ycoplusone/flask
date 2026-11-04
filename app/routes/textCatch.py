@@ -1,6 +1,7 @@
 import os
 import base64
 import mimetypes
+import hashlib
 from flask import Blueprint, json, render_template,Flask, request, jsonify, send_from_directory, send_file, abort, flash, redirect, url_for
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
@@ -17,6 +18,13 @@ main_bp = Blueprint('textCatch', __name__)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # /home/dlive/flask
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or os.path.join(os.path.dirname(PROJECT_ROOT), 'received_images')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# APK 배포 폴더 (업로드 폴더와 같은 이유로 git 저장소 바깥에 둡니다)
+# APK와 version.json은 항상 같은 파일명으로 덮어쓰기 관리합니다.
+APK_FOLDER = os.environ.get('APK_FOLDER') or os.path.join(os.path.dirname(PROJECT_ROOT), 'apk_releases')
+APK_FILENAME = 'textcatch.apk'
+VERSION_FILENAME = 'version.json'
+os.makedirs(APK_FOLDER, exist_ok=True)
 
 @main_bp.route('/api/sms-receiver', methods=['POST'])
 @main_bp.route('/api/textcatch', methods=['POST'])
@@ -282,5 +290,128 @@ def textCatchImageZip():
         as_attachment=True,
         download_name=download_name,
     )
-    
 
+
+def _readApkVersion():
+    """apk_releases/version.json 읽기 (없거나 깨졌으면 빈 dict)"""
+    version_path = os.path.join(APK_FOLDER, VERSION_FILENAME)
+    try:
+        with open(version_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+@main_bp.route('/api/textcatch/apk', methods=['GET', 'POST'])
+def textCatchApk():
+    """APK 업로드 + version.json(versionCode, versionName) 관리 화면 (같은 파일명으로 덮어쓰기)"""
+    if request.method == 'POST':
+        version_code = (request.form.get('versionCode') or '').strip()
+        version_name = (request.form.get('versionName') or '').strip()
+        apk_file = request.files.get('apk_file')
+
+        # 1. 입력값 검증
+        if not version_code.isdigit():
+            flash('versionCode는 숫자로 입력해 주세요.', 'error')
+            return redirect(url_for('textCatch.textCatchApk'))
+        if not version_name:
+            flash('versionName을 입력해 주세요.', 'error')
+            return redirect(url_for('textCatch.textCatchApk'))
+
+        apk_path = os.path.join(APK_FOLDER, APK_FILENAME)
+        has_upload = apk_file is not None and apk_file.filename != ''
+        if has_upload and not apk_file.filename.lower().endswith('.apk'):
+            flash('.apk 파일만 업로드할 수 있습니다.', 'error')
+            return redirect(url_for('textCatch.textCatchApk'))
+        if not has_upload and not os.path.exists(apk_path):
+            flash('등록된 APK가 없습니다. APK 파일을 선택해 주세요.', 'error')
+            return redirect(url_for('textCatch.textCatchApk'))
+
+        # 2. APK 덮어쓰기 (임시파일에 저장 후 교체 → 저장 도중 다운로드해도 깨진 파일을 받지 않음)
+        if has_upload:
+            tmp_apk = apk_path + '.tmp'
+            apk_file.save(tmp_apk)
+            os.replace(tmp_apk, apk_path)
+
+        # 3. version.json 덮어쓰기
+        version_info = {
+            "versionCode": int(version_code),
+            "versionName": version_name,
+        }
+        version_path = os.path.join(APK_FOLDER, VERSION_FILENAME)
+        tmp_version = version_path + '.tmp'
+        with open(tmp_version, 'w', encoding='utf-8') as f:
+            json.dump(version_info, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_version, version_path)
+
+        msg = 'APK 업로드 및 ' if has_upload else ''
+        flash(f'{msg}version.json 저장 완료 (versionCode={version_code}, versionName={version_name})', 'info')
+        return redirect(url_for('textCatch.textCatchApk'))
+
+    # GET: 현재 등록 정보 표시
+    apk_path = os.path.join(APK_FOLDER, APK_FILENAME)
+    apk_info = None
+    if os.path.exists(apk_path):
+        stat = os.stat(apk_path)
+        apk_info = {
+            "filename": APK_FILENAME,
+            "size_mb": f"{stat.st_size / 1024 / 1024:.2f}",
+            "updated_at": datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
+    return render_template(
+        'textcatch/textcatch_apk.html',
+        version_info=_readApkVersion(),
+        apk_info=apk_info,
+        apk_folder=APK_FOLDER,
+    )
+
+
+# sha256 계산은 APK 전체를 읽어야 하므로 (경로, 수정시각, 크기)가 같으면 이전 결과를 재사용
+_apk_meta_cache = {}
+
+def _apkMeta(apk_path):
+    """APK 파일의 (sha256, size) 반환"""
+    stat = os.stat(apk_path)
+    cache_key = (apk_path, stat.st_mtime_ns, stat.st_size)
+    if cache_key not in _apk_meta_cache:
+        sha = hashlib.sha256()
+        with open(apk_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                sha.update(chunk)
+        _apk_meta_cache.clear()
+        _apk_meta_cache[cache_key] = (sha.hexdigest(), stat.st_size)
+    return _apk_meta_cache[cache_key]
+
+
+@main_bp.route('/api/textcatch/version', methods=['GET'])
+def textCatchApkVersion():
+    """앱 업데이트 확인용: version.json + APK의 sha256/size/다운로드 url 을 합쳐서 반환 (로그인 불필요)"""
+    # curl http://localhost:5000/api/textcatch/version
+    version_path = os.path.join(APK_FOLDER, VERSION_FILENAME)
+    apk_path = os.path.join(APK_FOLDER, APK_FILENAME)
+    if not (os.path.exists(version_path) and os.path.exists(apk_path)):
+        abort(404)
+
+    info = _readApkVersion()
+    sha256, size = _apkMeta(apk_path)
+    info['url'] = url_for('textCatch.textCatchApkDownload', _external=True)
+    info['sha256'] = sha256
+    info['size'] = size
+    return jsonify(info)
+
+
+@main_bp.route('/api/textcatch/load', methods=['GET'])
+def textCatchApkDownload():
+    """APK 다운로드 (로그인 불필요)"""
+    # curl -O -J http://localhost:5000/api/textcatch/load
+    apk_path = os.path.join(APK_FOLDER, APK_FILENAME)
+    if not os.path.exists(apk_path):
+        abort(404)
+    return send_file(
+        apk_path,
+        mimetype='application/vnd.android.package-archive',
+        as_attachment=True,
+        download_name=APK_FILENAME,
+        conditional=True,   # Range 요청(이어받기) 지원
+    )
