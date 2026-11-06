@@ -145,8 +145,7 @@ def get_received_info():
     		from received_info     
     		group by device_id     		) b on (a.device_id  = b.device_id)
     left outer join received_app_info c on ( substr(a.receiver,-8) = substr(c.receiver,-8) )
-    where a.receiver not in ('1234567890','+11002474588','01075126986','01099999999','+11081812350','+13111288616')
-    AND a.device_id NOT IN  ('a542fc912eb8af04','a4e6264327745d6b')
+    where a.receiver not in ( select receiver from received_except ) # 제외 전화번호 등록 테이블
     order by 1 desc,2,3 ,4    
     """)
     result = db.session.execute(sql)
