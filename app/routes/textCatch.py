@@ -5,7 +5,7 @@ import hashlib
 from flask import Blueprint, json, render_template,Flask, request, jsonify, send_from_directory, send_file, abort, flash, redirect, url_for
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
 
@@ -174,8 +174,8 @@ def TextCatch():
 
 @main_bp.route('/textcatch', methods=['GET'])
 def textCatchList():
-    """수신 메시지 목록 화면 (기본 조회 조건: base_dt = 당일)"""
-    # 1. 검색 조건 수신 (없으면 기본값 당일)
+    """수신 메시지 목록 화면 (기본 조회 조건: base_dt = 당일 ~ 내일(D+1))"""
+    # 1. 검색 조건 수신 (없으면 기본값 당일 ~ 내일)
     start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
 
     # 2. 목록 조회
@@ -226,10 +226,10 @@ def textCatchImage(filename):
 
 
 def _getSearchArgs():
-    """목록/엑셀/이미지ZIP이 공통으로 쓰는 조회 조건 (기본 당일 ~ 당일)"""
+    """목록/엑셀/이미지ZIP이 공통으로 쓰는 조회 조건 (기본 당일 ~ 내일(D+1))"""
     today = datetime.now().strftime('%Y%m%d')
     default_start = today
-    default_end = today
+    default_end = (datetime.now() + timedelta(days=1)).strftime('%Y%m%d')  # 종료일 기본값: 내일(D+1)
 
     start_dt = (request.args.get('start_dt') or default_start).replace('-', '').strip()
     end_dt = (request.args.get('end_dt') or default_end).replace('-', '').strip()
