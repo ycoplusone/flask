@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from app.logics.home import get_remaining_collection_count, get_last7_job_counts, get_last7_text_counts, get_received_info, update_received_notes
+from app.logics.home import get_remaining_collection_count, get_last7_job_counts, get_last7_text_counts, get_received_info, update_received_notes , update_gift_score
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('main_bp', __name__)
@@ -17,6 +17,7 @@ def home():
 @main_bp.route('/received-info')
 def received_info():
     # 대시보드 SMS/MMS 수신 체크 영역 새로 고침용 (부분 HTML)
+    update_gift_score()
     return render_template('home/_received_info.html', received_info=get_received_info())
 
 

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .container { max-width: 1000px; }
+    .page-title { color: #c0392b; }
+    .page-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+
+    .add-form, .search-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .add-form input[type=text], .search-form input[type=text] { flex: 1; min-width: 180px; }
+
+    .btn-add, .btn-search, .btn-save, .btn-del, .btn-del-sel {
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        padding: 8px 14px;
+        font-size: 14px;
+    }
+    .btn-add { background: #e74c3c; font-weight: bold; padding: 10px 18px; }
+    .btn-add:hover { background: #c0392b; }
+    .btn-search { background: #7f8c8d; }
+    .btn-search:hover { background: #626d6e; }
+    .btn-save { background: #3498db; }
+    .btn-save:hover { background: #2874a6; }
+    .btn-del, .btn-del-sel { background: #e74c3c; }
+    .btn-del:hover, .btn-del-sel:hover { background: #c0392b; }
+
+    .list-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #666;
+    }
+    .word-input { width: 100%; min-width: 120px; }
+    .row-off td { color: #aaa; }
+</style>
+
+<div class="container py-4">
+    <h2 class="page-title">🎁상품권 판별 단어 관리</h2>
+    <p class="page-desc">수신 메시지(SMS/MMS)의 기프티콘 여부를 판별할 때 사용하는 단어입니다. 사용여부가 N 인 단어는 판별에서 제외됩니다.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="message-box {{ 'is-error' if category == 'error' else '' }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- 등록 -->
+    <form class="add-form" method="POST" action="{{ url_for('textCatch.giftWordAdd') }}">
+        <input type="hidden" name="keyword" value="{{ keyword }}">
+        <input type="text" name="word" placeholder="새 판별 단어 입력 (예: 기프티콘, 교환권, 쿠폰)" maxlength="128" required>
+        <select name="use_yn">
+            <option value="Y" selected>사용(Y)</option>
+            <option value="N">미사용(N)</option>
+        </select>
+        <button type="submit" class="btn-add">등록</button>
+    </form>
+
+    <!-- 검색 -->
+    <form class="search-form" method="GET" action="{{ url_for('textCatch.giftWordList') }}">
+        <input type="text" name="keyword" value="{{ keyword }}" placeholder="단어 검색">
+        <button type="submit" class="btn-search">검색</button>
+        {% if keyword %}<a href="{{ url_for('textCatch.giftWordList') }}">초기화</a>{% endif %}
+    </form>
+
+    <!-- 선택 삭제용 폼 (체크박스는 form 속성으로 연결) -->
+    <form id="deleteForm" method="POST" action="{{ url_for('textCatch.giftWordDelete') }}"
+          onsubmit="return confirmDelete();">
+        <input type="hidden" name="keyword" value="{{ keyword }}">
+    </form>
+
+    <div class="list-toolbar">
+        <span>총 {{ words|length }}건</span>
+        <button type="submit" form="deleteForm" class="btn-del-sel">선택 삭제</button>
+    </div>
+
+    <table class="table-cards">
+        <thead>
+            <tr>
+                <th style="width:40px;"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                <th>단어</th>
+                <th style="width:120px;">사용</th>
+                <th style="width:180px;">등록일</th>
+                <th style="width:150px;">관리</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if words %}
+                {% for row in words %}
+                <tr class="{{ '' if row.use_yn == 'Y' else 'row-off' }}">
+                    <td data-label="선택">
+                        <input type="checkbox" name="words" value="{{ row.word }}" form="deleteForm" class="chk-word">
+                    </td>
+                    <td class="text-left" data-label="단어">
+                        <input type="text" name="word" value="{{ row.word }}" maxlength="128" required
+                               class="word-input" form="upd-{{ loop.index }}">
+                    </td>
+                    <td data-label="사용">
+                        <select name="use_yn" form="upd-{{ loop.index }}">
+                            <option value="Y" {{ 'selected' if row.use_yn == 'Y' else '' }}>Y</option>
+                            <option value="N" {{ 'selected' if row.use_yn != 'Y' else '' }}>N</option>
+                        </select>
+                    </td>
+                    <td data-label="등록일" style="font-size:13px; color:#888;">{{ row.created_dt or '' }}</td>
+                    <td data-label="관리">
+                        <div class="cell-actions">
+                            <form id="upd-{{ loop.index }}" method="POST" action="{{ url_for('textCatch.giftWordUpdate') }}">
+                                <input type="hidden" name="org_word" value="{{ row.word }}">
+                                <input type="hidden" name="keyword" value="{{ keyword }}">
+                                <button type="submit" class="btn-save">수정</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('textCatch.giftWordDelete') }}"
+                                  onsubmit="return confirm('\'' + this.words.value + '\' 단어를 삭제할까요?');">
+                                <input type="hidden" name="words" value="{{ row.word }}">
+                                <input type="hidden" name="keyword" value="{{ keyword }}">
+                                <button type="submit" class="btn-del">삭제</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="5">등록된 단어가 없습니다.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function toggleAll(src) {
+        document.querySelectorAll('.chk-word').forEach(function (c) { c.checked = src.checked; });
+    }
+    function confirmDelete() {
+        var cnt = document.querySelectorAll('.chk-word:checked').length;
+        if (cnt === 0) { alert('삭제할 단어를 선택해 주세요.'); return false; }
+        return confirm(cnt + '건을 삭제할까요?');
+    }
+</script>
+{% endblock %}

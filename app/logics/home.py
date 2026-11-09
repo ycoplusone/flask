@@ -1,4 +1,4 @@
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from app import db
 
 
@@ -161,3 +161,108 @@ def update_received_notes(receiver, notes) -> int:
     result = db.session.execute(sql, {'notes': notes, 'receiver': receiver})
     db.session.commit()
     return result.rowcount
+
+
+def update_gift_score() -> int:
+    """
+    최근 7일 수신 메시지의 기프티콘 점수(gift_score)를 계산해 더한다.
+      대상 : received_messages 중 use_yn = 'Y' AND gift_yn = 'A' (미확인)
+      1) message_body 에 received_gift_word.word(use_yn = 'Y') 가 포함된 단어 수만큼 +1 씩
+      2) image_filename 이 있고 이미지에서 바코드가 검출되면 +500
+      3) 더한 뒤 gift_score 가 3 이상이면 gift_yn = 'Y', 아니면 'N' (처리 완료 → 다음 실행 대상에서 제외)
+    반환 : 처리(gift_yn 변경)된 건수
+
+    필요 라이브러리 : opencv-python-headless (cv2.barcode.BarcodeDetector, OpenCV 4.8 이상)
+    """
+    import os
+    # OpenCV 미설치 환경에서도 앱 기동(다른 화면)은 되도록 함수 안에서 import
+    import cv2
+
+    # 수신 이미지 폴더 (routes/textCatch.py 의 UPLOAD_FOLDER 와 동일한 규칙)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # /home/dlive/flask
+    upload_folder = os.environ.get('UPLOAD_FOLDER') or os.path.join(os.path.dirname(project_root), 'received_images')
+
+    # 1. 판별 단어 (사용 중인 것만, 대소문자 무시 비교를 위해 소문자로)
+    word_rows = db.session.execute(text("""
+        SELECT word
+        FROM received_gift_word
+        WHERE use_yn = 'Y'
+    """)).scalars().all()
+    words = [w.strip().lower() for w in word_rows if w and w.strip()]
+
+    # 2. 대상 메시지 (최근 7일, 사용, 기프티콘 미확인)
+    msg_rows = db.session.execute(text("""
+        SELECT id
+             , message_body
+             -- 과거 데이터에 문자열 'None'이 들어간 건이 있어 빈 값으로 정규화
+             , NULLIF(image_filename, 'None') AS image_filename
+        FROM received_messages
+        WHERE received_at >= NOW() - INTERVAL 7 DAY
+          AND use_yn = 'Y'
+          AND gift_yn = 'A'
+    """)).mappings().all()
+
+    # 바코드 검출기 설정 (기본값은 기프티콘 이미지에서 놓침·오검출이 많아 조정함)
+    #   - 기본값(downsample 512, scales [0.01, 0.03, 0.06, 0.08]) : 최근 수신 이미지 기준 바코드 170건 중 125건 놓침, 오검출 4건
+    #   - 아래 설정 : 170건 중 168건 검출, 오검출 0건
+    #   setDownsamplingThreshold : 이미지를 이 크기(px) 이하로 줄여서 검사. 작을수록 큰 바코드를 잘 찾음
+    #   setDetectorScales        : 검사 창 크기(이미지 대비 비율). 0.01(너무 작은 창)은 줄무늬 그림을 바코드로 오인해 제외
+    detector = cv2.barcode.BarcodeDetector()
+    detector.setDownsamplingThreshold(192)
+    detector.setDetectorScales([0.03, 0.06, 0.08, 0.12])
+    updates = []     # 이번에 점수가 생긴 건  : [{'id', 'score'}]
+    zero_ids = []    # 이번에 점수가 0 인 건 : 점수 변화 없이 gift_yn 만 판단
+
+    for row in msg_rows:
+        score = 0
+
+        # 2-1. 판별 단어 포함 개수만큼 +1
+        body = (row['message_body'] or '').lower()
+        score += sum(1 for w in words if w in body)
+
+        # 2-2. 첨부 이미지에서 바코드 검출 시 +500
+        image_filename = row['image_filename'] or ''
+        if image_filename:
+            image_path = os.path.join(upload_folder, image_filename)
+            if os.path.isfile(image_path):
+                try:
+                    # 바코드 영역만 검출 (디코딩 성공 여부와 무관하게 위치가 잡히면 검출로 판단)
+                    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+                    if img is not None:
+                        found, _points = detector.detect(img)
+                        if found:
+                            score += 500
+                except Exception as e:
+                    print(f"[update_gift_score] 바코드 검출 실패 id={row['id']} file={image_filename}: {e}")
+
+        if score > 0:
+            updates.append({'id': row['id'], 'score': score})
+        else:
+            zero_ids.append(row['id'])
+
+    # 3. gift_score 에 더하고, 더한 점수가 3 이상이면 gift_yn = 'Y' / 아니면 'N'
+    #    MySQL 은 SET 을 왼쪽부터 처리하며 앞에서 바뀐 값을 쓰므로
+    #    gift_yn 을 먼저 (기존 점수 + 이번 점수) 로 판단한 뒤 gift_score 를 더한다.
+    #    gift_yn = 'A' 조건은 그 사이 다른 실행이 먼저 처리한 건을 다시 더하지 않기 위함
+    if updates:
+        db.session.execute(text("""
+            UPDATE received_messages
+            SET gift_yn    = IF(COALESCE(gift_score, 0) + :score >= 3, 'Y', 'N')
+              , gift_score = COALESCE(gift_score, 0) + :score
+            WHERE id = :id
+              AND gift_yn = 'A'
+        """), updates)
+
+    # 3-1. 점수 0 인 건은 한 번에 처리 (건별 UPDATE 는 원격 DB 왕복이 많아 느림, 1000건씩 나눠 실행)
+    for i in range(0, len(zero_ids), 1000):
+        db.session.execute(text("""
+            UPDATE received_messages
+            SET gift_yn = IF(COALESCE(gift_score, 0) >= 3, 'Y', 'N')
+            WHERE id IN :ids
+              AND gift_yn = 'A'
+        """).bindparams(bindparam('ids', expanding=True)), {'ids': zero_ids[i:i + 1000]})
+
+    if updates or zero_ids:
+        db.session.commit()
+
+    return len(updates) + len(zero_ids)
