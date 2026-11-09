@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
 from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
+from app.logics.textCatch import getGiftWordList, addGiftWord, updateGiftWord, deleteGiftWord
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
@@ -176,10 +177,10 @@ def TextCatch():
 def textCatchList():
     """수신 메시지 목록 화면 (기본 조회 조건: base_dt = 당일 ~ 내일(D+1))"""
     # 1. 검색 조건 수신 (없으면 기본값 당일 ~ 내일)
-    start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn = _getSearchArgs()
 
     # 2. 목록 조회
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
 
     # 3. 화면 전달 (date input은 YYYY-MM-DD 형식이 필요하므로 변환값도 함께 전달)
     return render_template(
@@ -193,6 +194,7 @@ def textCatchList():
         receiver=receiver,
         keyword=keyword,
         msg_type=msg_type,
+        gift_yn=gift_yn,
     )
 
 
@@ -213,7 +215,8 @@ def textCatchDelete():
                             sender=request.form.get('sender', ''),
                             receiver=request.form.get('receiver', ''),
                             keyword=request.form.get('keyword', ''),
-                            msg_type=request.form.get('msg_type', '')))
+                            msg_type=request.form.get('msg_type', ''),
+                            gift_yn=request.form.get('gift_yn', '')))
 
 
 @main_bp.route('/textcatch/image/<filename>')
@@ -239,20 +242,23 @@ def _getSearchArgs():
     msg_type = (request.args.get('msg_type') or '').strip().upper()
     if msg_type not in ('MMS', 'SMS'):
         msg_type = ''
+    gift_yn = (request.args.get('gift_yn') or '').strip().upper()
+    if gift_yn not in ('A', 'N', 'Y'):
+        gift_yn = ''
 
     # 시작일이 종료일보다 크면 서로 교환
     if start_dt > end_dt:
         start_dt, end_dt = end_dt, start_dt
 
-    return start_dt, end_dt, sender, receiver, keyword, msg_type
+    return start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn
 
 
 @main_bp.route('/textcatch/excel', methods=['GET'])
 def textCatchExcel():
     """현재 조회 조건의 목록을 엑셀(xlsx)로 다운로드 (이미지 제외)"""
-    start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
     excel_file = makeTextCatchExcel(list_rows)
 
     # 파일명: 조회기간 + 다운로드 시각
@@ -269,9 +275,9 @@ def textCatchExcel():
 @main_bp.route('/textcatch/images', methods=['GET'])
 def textCatchImageZip():
     """현재 조회 조건에 포함된 첨부 이미지를 ZIP으로 한번에 다운로드"""
-    start_dt, end_dt, sender, receiver, keyword, msg_type = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
     zip_file, file_count = makeTextCatchImageZip(list_rows, UPLOAD_FOLDER)
 
     # 받을 이미지가 없으면 빈 ZIP을 주지 않고 목록으로 돌려보냄
@@ -280,7 +286,7 @@ def textCatchImageZip():
         return redirect(url_for('textCatch.textCatchList',
                                 start_dt=start_dt, end_dt=end_dt,
                                 sender=sender, receiver=receiver, keyword=keyword,
-                                msg_type=msg_type))
+                                msg_type=msg_type, gift_yn=gift_yn))
 
     download_name = f"수신이미지_{start_dt}_{end_dt}_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
 
@@ -415,3 +421,83 @@ def textCatchApkDownload():
         download_name=APK_FILENAME,
         conditional=True,   # Range 요청(이어받기) 지원
     )
+
+
+# ------------------------------------------------------------------
+# 기프티콘 여부 판별 단어 관리 화면
+# ------------------------------------------------------------------
+GIFT_WORD_MAX_LEN = 128  # received_gift_word.word varchar(128)
+
+
+def _normUseYn(value):
+    """use_yn 값 보정 (Y/N 외에는 Y)"""
+    value = (value or 'Y').strip().upper()
+    return value if value in ('Y', 'N') else 'Y'
+
+
+def _redirectGiftWord():
+    """처리 후 같은 검색어로 목록 복귀"""
+    return redirect(url_for('textCatch.giftWordList', keyword=request.form.get('keyword', '')))
+
+
+@main_bp.route('/textcatch/gift_word', methods=['GET'])
+def giftWordList():
+    """기프티콘 판별 단어 목록 화면"""
+    keyword = (request.args.get('keyword') or '').strip()
+    words = getGiftWordList(keyword)
+    return render_template('textcatch/textcatch_gift_word.html', words=words, keyword=keyword)
+
+
+@main_bp.route('/textcatch/gift_word/add', methods=['POST'])
+def giftWordAdd():
+    """기프티콘 판별 단어 등록"""
+    word = (request.form.get('word') or '').strip()
+    use_yn = _normUseYn(request.form.get('use_yn'))
+
+    if not word:
+        flash('등록할 단어를 입력해 주세요.', 'error')
+    elif len(word) > GIFT_WORD_MAX_LEN:
+        flash(f'단어는 {GIFT_WORD_MAX_LEN}자 이하로 입력해 주세요.', 'error')
+    elif addGiftWord(word, use_yn):
+        flash(f"'{word}' 단어를 등록했습니다.", 'info')
+    else:
+        flash(f"'{word}' 는 이미 등록된 단어입니다.", 'error')
+
+    return _redirectGiftWord()
+
+
+@main_bp.route('/textcatch/gift_word/update', methods=['POST'])
+def giftWordUpdate():
+    """기프티콘 판별 단어 수정 (단어명 / 사용여부)"""
+    org_word = (request.form.get('org_word') or '').strip()
+    word = (request.form.get('word') or '').strip()
+    use_yn = _normUseYn(request.form.get('use_yn'))
+
+    if not org_word or not word:
+        flash('수정할 단어를 입력해 주세요.', 'error')
+    elif len(word) > GIFT_WORD_MAX_LEN:
+        flash(f'단어는 {GIFT_WORD_MAX_LEN}자 이하로 입력해 주세요.', 'error')
+    else:
+        result = updateGiftWord(org_word, word, use_yn)
+        if result == 'ok':
+            flash(f"'{word}' 단어를 수정했습니다.", 'info')
+        elif result == 'dup':
+            flash(f"'{word}' 는 이미 등록된 단어입니다.", 'error')
+        else:
+            flash(f"'{org_word}' 단어를 찾을 수 없습니다.", 'error')
+
+    return _redirectGiftWord()
+
+
+@main_bp.route('/textcatch/gift_word/delete', methods=['POST'])
+def giftWordDelete():
+    """기프티콘 판별 단어 삭제 (단건/선택 다건)"""
+    words = [w.strip() for w in request.form.getlist('words') if w.strip()]
+
+    if not words:
+        flash('삭제할 단어를 선택해 주세요.', 'error')
+    else:
+        deleted = deleteGiftWord(words)
+        flash(f'{deleted}건을 삭제했습니다.', 'info')
+
+    return _redirectGiftWord()

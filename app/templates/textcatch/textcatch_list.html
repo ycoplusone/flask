@@ -26,11 +26,8 @@
         color: #888;
     }
     .input-clear { position: relative; }
-    /* 발신/수신번호 입력칸 폭 15px 축소 (데스크톱만, 모바일은 50% 배치 유지) */
-    @media (min-width: 701px) {
-        .search-form .field-narrow { margin-right: -15px; }
-        .search-form .field-narrow .input-clear { width: calc(100% - 15px); }
-    }
+    .search-form .js-shrink input[type="date"] { width: 100%; }   /* 축소된 field 폭을 따라가도록 */
+    /* 조회 조건 입력칸 폭 축소: 시작일/종료일 5px, 발신번호/수신번호/메시지 내용 20% (데스크톱만, 하단 script / 모바일은 50% 배치 유지) */
     .input-clear input { width: 100%; padding-right: 30px; }
     .input-clear .btn-clear {
         position: absolute;
@@ -111,6 +108,9 @@
     .js-fill:hover { color: #c0392b; }
     .type-mms { color: #e67e22; font-weight: bold; }
     .type-sms { color: #3498db; font-weight: bold; }
+    .gift-y { color: #27ae60; font-weight: bold; }
+    .gift-n { color: #e74c3c; font-weight: bold; }
+    .gift-a { color: #999; }
     .no-data { padding: 40px; color: #999; }
 
     .btn-delete {
@@ -180,29 +180,29 @@
     {% endwith %}
 
     <form class="search-form" method="GET" action="/textcatch">
-        <div class="field">
+        <div class="field js-shrink" data-shrink-px="5">
             <label for="start_dt">시작일 (base_dt)</label>
             <input type="date" id="start_dt" name="start_dt" value="{{ start_dt_view }}">
         </div>
-        <div class="field">
+        <div class="field js-shrink" data-shrink-px="5">
             <label for="end_dt">종료일 (base_dt)</label>
             <input type="date" id="end_dt" name="end_dt" value="{{ end_dt_view }}">
         </div>
-        <div class="field field-narrow">
+        <div class="field js-shrink">
             <label for="sender">발신번호</label>
             <div class="input-clear">
                 <input type="text" id="sender" name="sender" value="{{ sender }}" placeholder="예: 010123">
                 <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
             </div>
         </div>
-        <div class="field field-narrow">
+        <div class="field js-shrink">
             <label for="receiver">수신번호</label>
             <div class="input-clear">
                 <input type="text" id="receiver" name="receiver" value="{{ receiver }}" placeholder="예: 010123">
                 <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
             </div>
         </div>
-        <div class="field">
+        <div class="field js-shrink">
             <label for="keyword">메시지 내용</label>
             <div class="input-clear">
                 <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="검색할 단어">
@@ -215,6 +215,15 @@
                 <option value="" {{ 'selected' if not msg_type else '' }}>전체</option>
                 <option value="MMS" {{ 'selected' if msg_type == 'MMS' else '' }}>MMS</option>
                 <option value="SMS" {{ 'selected' if msg_type == 'SMS' else '' }}>SMS</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="gift_yn">대상</label>
+            <select id="gift_yn" name="gift_yn">
+                <option value="" {{ 'selected' if not gift_yn else '' }}>전체</option>
+                <option value="A" {{ 'selected' if gift_yn == 'A' else '' }}>A(미)</option>
+                <option value="N" {{ 'selected' if gift_yn == 'N' else '' }}>N(노)</option>
+                <option value="Y" {{ 'selected' if gift_yn == 'Y' else '' }}>Y(네)</option>
             </select>
         </div>
         <button type="submit" class="btn-search">조회</button>
@@ -235,14 +244,15 @@
                 <input type="hidden" name="receiver" value="{{ receiver }}">
                 <input type="hidden" name="keyword" value="{{ keyword }}">
                 <input type="hidden" name="msg_type" value="{{ msg_type }}">
+                <input type="hidden" name="gift_yn" value="{{ gift_yn }}">
                 <button type="submit" class="btn-delete" id="btn-delete" disabled>🗑 선택 삭제</button>
             </form>
             <a class="btn-excel"
-               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}">
+               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}">
                 ⬇ 엑셀
             </a>
             <a class="btn-zip"
-               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}">
+               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}">
                 🗂 이미지
             </a>
         </div>
@@ -265,8 +275,9 @@
             <col style="width: 130px;">
             <col>
             <col style="width: 110px;">
-            <col style="width: 160px;">
+            <col style="width: 90px;">  {# 수신 시간 (yy.MM.dd / HH:mm 두 줄) 160 -> 90, 줄어든 폭은 메시지 내용으로 #}
             <col style="width: 80px;">
+            <col style="width: 90px;">
         </colgroup>
         <thead>
             <tr>
@@ -279,6 +290,7 @@
                 <th>첨부 이미지</th>
                 <th>수신 시간</th>
                 <th>지연시간</th>
+                <th>대상</th>
             </tr>
         </thead>
         <tbody>
@@ -313,12 +325,16 @@
                             -
                         {% endif %}
                     </td>
-                    <td data-label="수신 시간">{{ row.received_at }}</td>
+                    {# 수신 시간은 yy.MM.dd / HH:mm 두 줄로 간소화 #}
+                    <td data-label="수신 시간">{% if row.received_at %}{{ row.received_at.strftime('%y.%m.%d') }}<br>{{ row.received_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
                     <td data-label="지연시간">{{ row.dely_tm ~ '분' if row.dely_tm is not none else '-' }}</td>
+                    <td data-label="대상">
+                        <span class="gift-{{ row.gift_yn|lower }}">{{ row.gift_yn }}</span>
+                    </td>
                 </tr>
                 {% endfor %}
             {% else %}
-                <tr><td colspan="9" class="no-data">조회된 수신 메시지가 없습니다.</td></tr>
+                <tr><td colspan="10" class="no-data">조회된 수신 메시지가 없습니다.</td></tr>
             {% endif %}
         </tbody>
     </table>
@@ -332,6 +348,27 @@ function syncNavHeight() {
 }
 syncNavHeight();
 window.addEventListener('resize', syncNavHeight);
+
+// 조회 조건 입력칸 폭 축소 (데스크톱만)
+//   data-shrink-px 가 있으면 그만큼(px) 축소, 없으면 SHRINK_RATE 비율로 축소
+(function () {
+    const SHRINK_RATE = 0.8;   // 발신번호/수신번호/메시지 내용: 기본 폭의 80%
+    const desktop = window.matchMedia('(min-width: 701px)');
+    const fields = document.querySelectorAll('.search-form .js-shrink');
+
+    function apply() {
+        fields.forEach(f => { f.style.width = ''; });          // 기본 폭으로 되돌린 뒤 측정
+        if (!desktop.matches) return;                           // 모바일은 CSS 50% 배치 사용
+        const widths = Array.from(fields, f => f.offsetWidth);
+        fields.forEach((f, i) => {
+            const px = parseInt(f.dataset.shrinkPx, 10);
+            const w = isNaN(px) ? widths[i] * SHRINK_RATE : widths[i] - px;
+            f.style.width = Math.round(w) + 'px';
+        });
+    }
+    apply();
+    desktop.addEventListener('change', apply);
+})();
 
 // 조회 조건 입력값 지우기 (x 버튼)
 document.querySelectorAll('.input-clear .btn-clear').forEach(btn => {

@@ -119,7 +119,7 @@ def setAppLog( receiver , retry_count , inflight_count , hold_count , hold_oldes
 
 
 
-def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = '', msg_type: str = ''):
+def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = '', msg_type: str = '', gift_yn: str = ''):
     """
     수신 메시지(received_messages) 목록 조회.
     start_dt / end_dt : 조회 기준일(base_dt, varchar(8) YYYYMMDD) 범위
@@ -127,6 +127,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
     receiver          : 수신번호 부분검색 (선택)
     keyword           : 메시지 내용 부분검색 (선택)
     msg_type          : 'MMS' 이미지 첨부 건 / 'SMS' 이미지 없는 건 / '' 전체 (선택)
+    gift_yn           : 기프티콘여부 'A' 미확인 / 'N' 아님 / 'Y' 대상 / '' 전체 (선택)
     """
     sql = """
         SELECT id
@@ -139,6 +140,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
              , created_at
              , base_dt
              , TIMESTAMPDIFF(MINUTE, received_at, created_at) dely_tm
+             , COALESCE(gift_yn, 'A') AS gift_yn
         FROM received_messages
         WHERE base_dt BETWEEN :start_dt AND :end_dt
         AND use_yn = 'Y'
@@ -163,6 +165,10 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
         sql += " AND COALESCE(NULLIF(image_filename, 'None'), '') != '' "
     elif msg_type == 'SMS':
         sql += " AND COALESCE(NULLIF(image_filename, 'None'), '') = '' "
+
+    if gift_yn in ('A', 'N', 'Y'):
+        sql += " AND COALESCE(gift_yn, 'A') = :gift_yn "
+        params['gift_yn'] = gift_yn
 
     sql += " ORDER BY id DESC  "
 
@@ -201,7 +207,7 @@ def makeTextCatchExcel(list_rows: list):
     ws = wb.active
     ws.title = '수신메시지'
 
-    headers = ['ID', '구분', '발신번호', '수신번호', '메시지 내용', '수신 시간', '기준일']
+    headers = ['ID', '구분', '발신번호', '수신번호', '메시지 내용', '수신 시간', '기준일', 'gift_yn(대상)']
     ws.append(headers)
 
     # 헤더 스타일
@@ -214,7 +220,7 @@ def makeTextCatchExcel(list_rows: list):
         cell.border = Border(*[Side(style='thin', color='DDDDDD')] * 4)
 
     # 컬럼 너비
-    for col, width in zip('ABCDEFG', [8, 8, 16, 18, 60, 20, 12]):
+    for col, width in zip('ABCDEFGH', [8, 8, 16, 18, 60, 20, 12, 14]):
         ws.column_dimensions[col].width = width
 
     ws.freeze_panes = 'A2'
@@ -229,6 +235,7 @@ def makeTextCatchExcel(list_rows: list):
         ws.cell(row=idx, column=5, value=row.get('message_body'))
         ws.cell(row=idx, column=6, value=str(row.get('received_at') or ''))
         ws.cell(row=idx, column=7, value=row.get('base_dt'))
+        ws.cell(row=idx, column=8, value=row.get('gift_yn'))
 
         for col_idx in range(1, len(headers) + 1):
             cell = ws.cell(row=idx, column=col_idx)
@@ -277,3 +284,89 @@ def makeTextCatchImageZip(list_rows: list, upload_folder: str):
 
     output.seek(0)
     return output, file_count
+
+
+# ------------------------------------------------------------------
+# 기프티콘 여부 판별 단어 (received_gift_word) 관리
+#   컬럼 : word(PK) / use_yn / created_dt
+# ------------------------------------------------------------------
+def getGiftWordList(keyword: str = ''):
+    """기프티콘 판별 단어 목록 조회 (keyword: 단어 부분검색, 선택)"""
+    sql = """
+        SELECT word
+             , use_yn
+             , created_dt
+        FROM received_gift_word
+    """
+    params = {}
+    if keyword:
+        sql += " WHERE word LIKE :keyword "
+        params['keyword'] = f"%{keyword}%"
+    sql += " ORDER BY created_dt DESC, word "
+
+    result = db.session.execute(text(sql), params)
+    return [dict(row) for row in result.mappings()]
+
+
+def addGiftWord(word: str, use_yn: str = 'Y') -> bool:
+    """
+    기프티콘 판별 단어 등록.
+    반환 : 등록되면 True, 이미 있는 단어(PK 중복)면 False
+    """
+    sql = text("""
+        INSERT IGNORE INTO received_gift_word (word, use_yn, created_dt)
+        VALUES (:word, :use_yn, NOW())
+    """)
+    result = db.session.execute(sql, {'word': word, 'use_yn': use_yn})
+    db.session.commit()
+    return result.rowcount > 0
+
+
+def updateGiftWord(org_word: str, word: str, use_yn: str) -> str:
+    """
+    기프티콘 판별 단어 수정 (word 가 PK 이므로 원래 단어(org_word) 기준으로 갱신).
+    반환 : 'ok' 수정 완료 / 'dup' 바꾸려는 단어가 이미 존재 / 'none' 대상 없음
+    """
+    if word != org_word:
+        exists = db.session.execute(
+            text("SELECT 1 FROM received_gift_word WHERE word = :word"),
+            {'word': word},
+        ).first()
+        if exists:
+            return 'dup'
+
+    sql = text("""
+        UPDATE received_gift_word
+        SET word   = :word
+          , use_yn = :use_yn
+        WHERE word = :org_word
+    """)
+    result = db.session.execute(sql, {'word': word, 'use_yn': use_yn, 'org_word': org_word})
+    db.session.commit()
+    # 값이 그대로면 MySQL rowcount 가 0 일 수 있으므로 존재 여부로 판단
+    if result.rowcount == 0:
+        exists = db.session.execute(
+            text("SELECT 1 FROM received_gift_word WHERE word = :word"),
+            {'word': word},
+        ).first()
+        return 'ok' if exists else 'none'
+    return 'ok'
+
+
+def deleteGiftWord(words: list) -> int:
+    """
+    기프티콘 판별 단어 삭제 (실제 DELETE).
+    words : 삭제할 단어 목록
+    반환  : 삭제된 건수
+    """
+    if not words:
+        return 0
+
+    sql = text("""
+        DELETE FROM received_gift_word
+        WHERE word IN :words
+    """).bindparams(bindparam('words', expanding=True))
+
+    result = db.session.execute(sql, {'words': words})
+    db.session.commit()
+    return result.rowcount
