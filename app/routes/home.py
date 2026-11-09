@@ -11,6 +11,7 @@ def home():
     week_counts = get_last7_job_counts()
     text_counts = get_last7_text_counts()
     received_info = get_received_info()
+    update_gift_score()
     return render_template('home/app.html', remaining_count=remaining_count, week_counts=week_counts, text_counts=text_counts, received_info=received_info)
 
 

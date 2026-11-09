@@ -169,7 +169,7 @@ def update_gift_score() -> int:
       대상 : received_messages 중 use_yn = 'Y' AND gift_yn = 'A' (미확인)
       1) message_body 에 received_gift_word.word(use_yn = 'Y') 가 포함된 단어 수만큼 +1 씩
       2) image_filename 이 있고 이미지에서 바코드가 검출되면 +500
-      3) 더한 뒤 gift_score 가 3 이상이면 gift_yn = 'Y', 아니면 'N' (처리 완료 → 다음 실행 대상에서 제외)
+      3) 더한 뒤 gift_score 가 2 이상이면 gift_yn = 'Y', 아니면 'N' (처리 완료 → 다음 실행 대상에서 제외)
     반환 : 처리(gift_yn 변경)된 건수
 
     필요 라이브러리 : opencv-python-headless (cv2.barcode.BarcodeDetector, OpenCV 4.8 이상)
@@ -240,14 +240,14 @@ def update_gift_score() -> int:
         else:
             zero_ids.append(row['id'])
 
-    # 3. gift_score 에 더하고, 더한 점수가 3 이상이면 gift_yn = 'Y' / 아니면 'N'
+    # 3. gift_score 에 더하고, 더한 점수가 2 이상이면 gift_yn = 'Y' / 아니면 'N'
     #    MySQL 은 SET 을 왼쪽부터 처리하며 앞에서 바뀐 값을 쓰므로
     #    gift_yn 을 먼저 (기존 점수 + 이번 점수) 로 판단한 뒤 gift_score 를 더한다.
     #    gift_yn = 'A' 조건은 그 사이 다른 실행이 먼저 처리한 건을 다시 더하지 않기 위함
     if updates:
         db.session.execute(text("""
             UPDATE received_messages
-            SET gift_yn    = IF(COALESCE(gift_score, 0) + :score >= 3, 'Y', 'N')
+            SET gift_yn    = IF(COALESCE(gift_score, 0) + :score >= 2, 'Y', 'N')
               , gift_score = COALESCE(gift_score, 0) + :score
             WHERE id = :id
               AND gift_yn = 'A'
@@ -257,7 +257,7 @@ def update_gift_score() -> int:
     for i in range(0, len(zero_ids), 1000):
         db.session.execute(text("""
             UPDATE received_messages
-            SET gift_yn = IF(COALESCE(gift_score, 0) >= 3, 'Y', 'N')
+            SET gift_yn = IF(COALESCE(gift_score, 0) >= 2, 'Y', 'N')
             WHERE id IN :ids
               AND gift_yn = 'A'
         """).bindparams(bindparam('ids', expanding=True)), {'ids': zero_ids[i:i + 1000]})
