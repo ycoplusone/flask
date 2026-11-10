@@ -166,6 +166,32 @@
         .btn-delete { flex: 1 1 0; padding: 10px 8px; }
         .thumb { max-width: 160px; max-height: 160px; }
     }
+
+    /* 메시지 내용: 기본 3줄만 보이고 [더보기] 클릭 시 전체 표시 */
+    .msg-body {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        overflow: hidden;
+        word-break: break-all;
+    }
+    .msg-body.is-open {
+        display: block;
+        -webkit-line-clamp: unset;
+        line-clamp: none;
+    }
+    .btn-more {
+        margin-top: 4px;
+        padding: 0;
+        min-height: 0;             /* style.css 모바일 button min-height: 40px 무효화 */
+        border: none;
+        background: none;
+        color: #2c7be5;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .btn-more:hover { text-decoration: underline; }
 </style>
 
 <div class="container py-4">
@@ -315,7 +341,10 @@
                         {# 수신번호는 국가번호 등 형식이 달라도 찾을 수 있도록 뒤 8자리만 전달 #}
                         {% if row.receiver %}<span class="js-fill" data-target="receiver" data-value="{{ row.receiver[-8:] }}" title="조회 조건에 입력">{{ row.receiver }}</span>{% endif %}
                     </td>
-                    <td class="text-left cell-block" data-label="메시지 내용">{{ row.message_body }}</td>
+                    <td class="text-left cell-block" data-label="메시지 내용">
+                        <div class="msg-body">{{ row.message_body }}</div>
+                        <button type="button" class="btn-more" hidden>더보기</button>
+                    </td>
                     <td data-label="첨부 이미지">
                         {% if row.image_filename %}
                             <a href="/textcatch/image/{{ row.image_filename }}" target="_blank">
@@ -380,6 +409,24 @@ document.querySelectorAll('.input-clear .btn-clear').forEach(btn => {
 });
 
 // 리스트의 발신/수신번호 클릭 시 조회 조건에 값 입력
+// 메시지 내용 더보기/접기 (3줄을 넘는 메시지에만 버튼 표시)
+function syncMoreButtons() {
+    document.querySelectorAll('.msg-body').forEach(body => {
+        const btn = body.nextElementSibling;
+        if (body.classList.contains('is-open')) return;   // 펼친 상태는 유지
+        btn.hidden = body.scrollHeight <= body.clientHeight + 1;
+    });
+}
+document.querySelectorAll('.btn-more').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const body = btn.previousElementSibling;
+        const open = body.classList.toggle('is-open');
+        btn.textContent = open ? '접기' : '더보기';
+    });
+});
+syncMoreButtons();
+window.addEventListener('resize', syncMoreButtons);   // 화면 폭이 바뀌면 3줄 초과 여부도 바뀜
+
 document.querySelectorAll('.js-fill').forEach(el => {
     el.addEventListener('click', () => {
         const input = document.getElementById(el.dataset.target);
