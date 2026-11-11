@@ -435,6 +435,21 @@ def _normUseYn(value):
     return value if value in ('Y', 'N') else 'Y'
 
 
+GIFT_SCORE_MIN, GIFT_SCORE_MAX = -9999, 9999
+
+
+def _parseScore(value):
+    """score 값 보정 (빈 값은 1, 정수가 아니거나 범위를 벗어나면 None)"""
+    value = (value or '').strip()
+    if value == '':
+        return 1
+    try:
+        score = int(value)
+    except ValueError:
+        return None
+    return score if GIFT_SCORE_MIN <= score <= GIFT_SCORE_MAX else None
+
+
 def _redirectGiftWord():
     """처리 후 같은 검색어로 목록 복귀"""
     return redirect(url_for('textCatch.giftWordList', keyword=request.form.get('keyword', '')))
@@ -453,12 +468,15 @@ def giftWordAdd():
     """기프티콘 판별 단어 등록"""
     word = (request.form.get('word') or '').strip()
     use_yn = _normUseYn(request.form.get('use_yn'))
+    score = _parseScore(request.form.get('score'))
 
     if not word:
         flash('등록할 단어를 입력해 주세요.', 'error')
     elif len(word) > GIFT_WORD_MAX_LEN:
         flash(f'단어는 {GIFT_WORD_MAX_LEN}자 이하로 입력해 주세요.', 'error')
-    elif addGiftWord(word, use_yn):
+    elif score is None:
+        flash(f'점수는 {GIFT_SCORE_MIN} ~ {GIFT_SCORE_MAX} 사이의 정수로 입력해 주세요.', 'error')
+    elif addGiftWord(word, use_yn, score):
         flash(f"'{word}' 단어를 등록했습니다.", 'info')
     else:
         flash(f"'{word}' 는 이미 등록된 단어입니다.", 'error')
@@ -468,17 +486,20 @@ def giftWordAdd():
 
 @main_bp.route('/textcatch/gift_word/update', methods=['POST'])
 def giftWordUpdate():
-    """기프티콘 판별 단어 수정 (단어명 / 사용여부)"""
+    """기프티콘 판별 단어 수정 (단어명 / 사용여부 / 점수)"""
     org_word = (request.form.get('org_word') or '').strip()
     word = (request.form.get('word') or '').strip()
     use_yn = _normUseYn(request.form.get('use_yn'))
+    score = _parseScore(request.form.get('score'))
 
     if not org_word or not word:
         flash('수정할 단어를 입력해 주세요.', 'error')
     elif len(word) > GIFT_WORD_MAX_LEN:
         flash(f'단어는 {GIFT_WORD_MAX_LEN}자 이하로 입력해 주세요.', 'error')
+    elif score is None:
+        flash(f'점수는 {GIFT_SCORE_MIN} ~ {GIFT_SCORE_MAX} 사이의 정수로 입력해 주세요.', 'error')
     else:
-        result = updateGiftWord(org_word, word, use_yn)
+        result = updateGiftWord(org_word, word, use_yn, score)
         if result == 'ok':
             flash(f"'{word}' 단어를 수정했습니다.", 'info')
         elif result == 'dup':
