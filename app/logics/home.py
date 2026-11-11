@@ -88,13 +88,13 @@ def upsert_received_info():
         and COALESCE(device_id,'') != ''
         AND COALESCE(SENDER, '') != ''  
         and use_yn = 'Y'
-        and receiver not in ('+821075126986','1234567890','+11002474588','01099999999','+11081812350','+13111288616') #제외 전화번호
+        and receiver not in ( select receiver from received_except ) #제외 전화번호
         group by device_id, REGEXP_REPLACE(receiver, '^\\+8210', '010')
         union all
         select
         device_id , receiver , sms_dt , mms_dt ,0 dely_tm_a, dely_tm dely_tm_b ,  NOW() - INTERVAL 18 HOUR chk_tm , 'b' as gubun
         from received_info        
-        where receiver not in ('1234567890','+11002474588','01075126986','+821075126986','01099999999','+11081812350','+13111288616')
+        where receiver not in ( select receiver from received_except )
     ) a
     group by device_id , receiver 
         ON DUPLICATE KEY UPDATE
