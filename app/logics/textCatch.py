@@ -141,6 +141,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
              , base_dt
              , TIMESTAMPDIFF(MINUTE, received_at, created_at) dely_tm
              , COALESCE(gift_yn, 'A') AS gift_yn
+             , COALESCE(gift_score, 0) AS gift_score
         FROM received_messages
         WHERE base_dt BETWEEN :start_dt AND :end_dt
         AND use_yn = 'Y'

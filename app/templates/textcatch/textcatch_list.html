@@ -167,12 +167,12 @@
         .thumb { max-width: 160px; max-height: 160px; }
     }
 
-    /* 메시지 내용: 기본 3줄만 보이고 [더보기] 클릭 시 전체 표시 */
+    /* 메시지 내용: 기본 4줄만 보이고 [더보기] 클릭 시 전체 표시 */
     .msg-body {
         display: -webkit-box;
         -webkit-box-orient: vertical;
-        -webkit-line-clamp: 3;
-        line-clamp: 3;
+        -webkit-line-clamp: 4;
+        line-clamp: 4;
         overflow: hidden;
         word-break: break-all;
     }
@@ -358,7 +358,7 @@
                     <td data-label="수신 시간">{% if row.received_at %}{{ row.received_at.strftime('%y.%m.%d') }}<br>{{ row.received_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
                     <td data-label="지연시간">{{ row.dely_tm ~ '분' if row.dely_tm is not none else '-' }}</td>
                     <td data-label="대상">
-                        <span class="gift-{{ row.gift_yn|lower }}">{{ row.gift_yn }}</span>
+                        <span class="gift-{{ row.gift_yn|lower }}">{{ row.gift_yn }}<br>({{ row.gift_score }})</span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -409,7 +409,7 @@ document.querySelectorAll('.input-clear .btn-clear').forEach(btn => {
 });
 
 // 리스트의 발신/수신번호 클릭 시 조회 조건에 값 입력
-// 메시지 내용 더보기/접기 (3줄을 넘는 메시지에만 버튼 표시)
+// 메시지 내용 더보기/접기 (4줄을 넘는 메시지에만 버튼 표시)
 function syncMoreButtons() {
     document.querySelectorAll('.msg-body').forEach(body => {
         const btn = body.nextElementSibling;
@@ -425,7 +425,7 @@ document.querySelectorAll('.btn-more').forEach(btn => {
     });
 });
 syncMoreButtons();
-window.addEventListener('resize', syncMoreButtons);   // 화면 폭이 바뀌면 3줄 초과 여부도 바뀜
+window.addEventListener('resize', syncMoreButtons);   // 화면 폭이 바뀌면 4줄 초과 여부도 바뀜
 
 document.querySelectorAll('.js-fill').forEach(el => {
     el.addEventListener('click', () => {
