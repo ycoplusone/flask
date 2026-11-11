@@ -42,11 +42,13 @@
     }
     .word-input { width: 100%; min-width: 120px; }
     .row-off td { color: #aaa; }
+    .score-input { width: 80px; text-align: right; }
+    .score-minus { color: #e74c3c; font-weight: bold; }
 </style>
 
 <div class="container py-4">
     <h2 class="page-title">🎁상품권 판별 단어 관리</h2>
-    <p class="page-desc">수신 메시지(SMS/MMS)의 기프티콘 여부를 판별할 때 사용하는 단어입니다. 사용여부가 N 인 단어는 판별에서 제외됩니다.</p>
+    <p class="page-desc">수신 메시지(SMS/MMS)의 기프티콘 여부를 판별할 때 사용하는 단어입니다. 사용여부가 N 인 단어는 판별에서 제외됩니다. 메시지에 단어가 포함되면 점수만큼 더하며, 음수 점수는 감점됩니다.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -60,6 +62,7 @@
     <form class="add-form" method="POST" action="{{ url_for('textCatch.giftWordAdd') }}">
         <input type="hidden" name="keyword" value="{{ keyword }}">
         <input type="text" name="word" placeholder="새 판별 단어 입력 (예: 기프티콘, 교환권, 쿠폰)" maxlength="128" required>
+        <input type="number" name="score" value="1" step="1" min="-9999" max="9999" class="score-input" title="점수 (음수면 감점)">
         <select name="use_yn">
             <option value="Y" selected>사용(Y)</option>
             <option value="N">미사용(N)</option>
@@ -90,6 +93,7 @@
             <tr>
                 <th style="width:40px;"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                 <th>단어</th>
+                <th style="width:110px;">점수</th>
                 <th style="width:120px;">사용</th>
                 <th style="width:180px;">등록일</th>
                 <th style="width:150px;">관리</th>
@@ -105,6 +109,10 @@
                     <td class="text-left" data-label="단어">
                         <input type="text" name="word" value="{{ row.word }}" maxlength="128" required
                                class="word-input" form="upd-{{ loop.index }}">
+                    </td>
+                    <td data-label="점수">
+                        <input type="number" name="score" value="{{ row.score }}" step="1" min="-9999" max="9999" required
+                               class="score-input{{ ' score-minus' if row.score < 0 else '' }}" form="upd-{{ loop.index }}">
                     </td>
                     <td data-label="사용">
                         <select name="use_yn" form="upd-{{ loop.index }}">
@@ -131,7 +139,7 @@
                 </tr>
                 {% endfor %}
             {% else %}
-                <tr><td colspan="5">등록된 단어가 없습니다.</td></tr>
+                <tr><td colspan="6">등록된 단어가 없습니다.</td></tr>
             {% endif %}
         </tbody>
     </table>

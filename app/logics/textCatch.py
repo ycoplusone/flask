@@ -289,13 +289,14 @@ def makeTextCatchImageZip(list_rows: list, upload_folder: str):
 
 # ------------------------------------------------------------------
 # 기프티콘 여부 판별 단어 (received_gift_word) 관리
-#   컬럼 : word(PK) / use_yn / created_dt
+#   컬럼 : word(PK) / use_yn / score / created_dt
 # ------------------------------------------------------------------
 def getGiftWordList(keyword: str = ''):
     """기프티콘 판별 단어 목록 조회 (keyword: 단어 부분검색, 선택)"""
     sql = """
         SELECT word
              , use_yn
+             , COALESCE(score, 1) AS score
              , created_dt
         FROM received_gift_word
     """
@@ -309,21 +310,22 @@ def getGiftWordList(keyword: str = ''):
     return [dict(row) for row in result.mappings()]
 
 
-def addGiftWord(word: str, use_yn: str = 'Y') -> bool:
+def addGiftWord(word: str, use_yn: str = 'Y', score: int = 1) -> bool:
     """
     기프티콘 판별 단어 등록.
+    score  : 단어 포함 시 더할 점수 (음수면 감점)
     반환 : 등록되면 True, 이미 있는 단어(PK 중복)면 False
     """
     sql = text("""
-        INSERT IGNORE INTO received_gift_word (word, use_yn, created_dt)
-        VALUES (:word, :use_yn, NOW())
+        INSERT IGNORE INTO received_gift_word (word, use_yn, score, created_dt)
+        VALUES (:word, :use_yn, :score, NOW())
     """)
-    result = db.session.execute(sql, {'word': word, 'use_yn': use_yn})
+    result = db.session.execute(sql, {'word': word, 'use_yn': use_yn, 'score': score})
     db.session.commit()
     return result.rowcount > 0
 
 
-def updateGiftWord(org_word: str, word: str, use_yn: str) -> str:
+def updateGiftWord(org_word: str, word: str, use_yn: str, score: int = 1) -> str:
     """
     기프티콘 판별 단어 수정 (word 가 PK 이므로 원래 단어(org_word) 기준으로 갱신).
     반환 : 'ok' 수정 완료 / 'dup' 바꾸려는 단어가 이미 존재 / 'none' 대상 없음
@@ -340,9 +342,10 @@ def updateGiftWord(org_word: str, word: str, use_yn: str) -> str:
         UPDATE received_gift_word
         SET word   = :word
           , use_yn = :use_yn
+          , score  = :score
         WHERE word = :org_word
     """)
-    result = db.session.execute(sql, {'word': word, 'use_yn': use_yn, 'org_word': org_word})
+    result = db.session.execute(sql, {'word': word, 'use_yn': use_yn, 'score': score, 'org_word': org_word})
     db.session.commit()
     # 값이 그대로면 MySQL rowcount 가 0 일 수 있으므로 존재 여부로 판단
     if result.rowcount == 0:

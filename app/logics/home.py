@@ -167,7 +167,7 @@ def update_gift_score() -> int:
     """
     최근 7일 수신 메시지의 기프티콘 점수(gift_score)를 계산해 더한다.
       대상 : received_messages 중 use_yn = 'Y' AND gift_yn = 'A' (미확인)
-      1) message_body 에 received_gift_word.word(use_yn = 'Y') 가 포함된 단어 수만큼 +1 씩
+      1) message_body 에 received_gift_word.word(use_yn = 'Y') 가 포함되면 그 단어의 score 만큼 더함 (음수면 감점)
       2) image_filename 이 있고 이미지에서 바코드가 검출되면 +500
       3) 더한 뒤 gift_score 가 2 이상이면 gift_yn = 'Y', 아니면 'N' (처리 완료 → 다음 실행 대상에서 제외)
     반환 : 처리(gift_yn 변경)된 건수
@@ -182,13 +182,14 @@ def update_gift_score() -> int:
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # /home/dlive/flask
     upload_folder = os.environ.get('UPLOAD_FOLDER') or os.path.join(os.path.dirname(project_root), 'received_images')
 
-    # 1. 판별 단어 (사용 중인 것만, 대소문자 무시 비교를 위해 소문자로)
+    # 1. 판별 단어와 점수 (사용 중인 것만, 대소문자 무시 비교를 위해 소문자로)
     word_rows = db.session.execute(text("""
         SELECT word
+             , COALESCE(score, 1) AS score
         FROM received_gift_word
         WHERE use_yn = 'Y'
-    """)).scalars().all()
-    words = [w.strip().lower() for w in word_rows if w and w.strip()]
+    """)).mappings().all()
+    words = [(r['word'].strip().lower(), int(r['score'])) for r in word_rows if r['word'] and r['word'].strip()]
 
     # 2. 대상 메시지 (최근 7일, 사용, 기프티콘 미확인)
     msg_rows = db.session.execute(text("""
@@ -210,15 +211,15 @@ def update_gift_score() -> int:
     detector = cv2.barcode.BarcodeDetector()
     detector.setDownsamplingThreshold(192)
     detector.setDetectorScales([0.03, 0.06, 0.08, 0.12])
-    updates = []     # 이번에 점수가 생긴 건  : [{'id', 'score'}]
+    updates = []     # 이번에 점수가 변한 건  : [{'id', 'score'}] (음수 포함)
     zero_ids = []    # 이번에 점수가 0 인 건 : 점수 변화 없이 gift_yn 만 판단
 
     for row in msg_rows:
         score = 0
 
-        # 2-1. 판별 단어 포함 개수만큼 +1
+        # 2-1. 포함된 판별 단어의 점수 합산 (감점 단어는 음수)
         body = (row['message_body'] or '').lower()
-        score += sum(1 for w in words if w in body)
+        score += sum(s for w, s in words if w in body)
 
         # 2-2. 첨부 이미지에서 바코드 검출 시 +500
         image_filename = row['image_filename'] or ''
@@ -235,7 +236,7 @@ def update_gift_score() -> int:
                 except Exception as e:
                     print(f"[update_gift_score] 바코드 검출 실패 id={row['id']} file={image_filename}: {e}")
 
-        if score > 0:
+        if score != 0:
             updates.append({'id': row['id'], 'score': score})
         else:
             zero_ids.append(row['id'])
