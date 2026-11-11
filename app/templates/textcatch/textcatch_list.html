@@ -5,6 +5,28 @@
     .container { max-width: 1200px; }
     .page-title { color: #c0392b; }
 
+    /* 페이징 */
+    .pager {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+        margin: 20px 0;
+    }
+    .pager a, .pager span {
+        min-width: 36px;
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        text-decoration: none;
+        color: #333;
+        background: #fff;
+    }
+    .pager a:hover { background: #f5f5f5; }
+    .pager .current { background: #e74c3c; border-color: #e74c3c; color: #fff; font-weight: bold; }
+    .pager .disabled { color: #ccc; }
+
     .search-form {
         display: flex;
         flex-wrap: wrap;
@@ -205,7 +227,7 @@
       {% endif %}
     {% endwith %}
 
-    <form class="search-form" method="GET" action="/textcatch">
+    <form id="search-form" class="search-form" method="GET" action="/textcatch">
         <div class="field js-shrink" data-shrink-px="5">
             <label for="start_dt">시작일 (base_dt)</label>
             <input type="date" id="start_dt" name="start_dt" value="{{ start_dt_view }}">
@@ -257,8 +279,8 @@
 
     <div class="list-header">
         <div class="result-count">
-            조회 기간 : {{ start_dt }} ~ {{ end_dt }} / 총 <strong>{{ list_rows|length }}</strong> 건
-            (이미지 {{ list_rows|selectattr('image_filename')|list|length }} 건)
+            조회 기간 : {{ start_dt }} ~ {{ end_dt }} / 총 <strong>{{ total_count }}</strong> 건
+            (이미지 {{ image_count }} 건)
         </div>
         {# 현재 조회 조건을 그대로 넘겨 화면과 동일한 대상을 내려받음 #}
         <div class="actions">
@@ -271,6 +293,8 @@
                 <input type="hidden" name="keyword" value="{{ keyword }}">
                 <input type="hidden" name="msg_type" value="{{ msg_type }}">
                 <input type="hidden" name="gift_yn" value="{{ gift_yn }}">
+                <input type="hidden" name="page_size" value="{{ page_size }}">
+                <input type="hidden" name="page" value="{{ page }}">
                 <button type="submit" class="btn-delete" id="btn-delete" disabled>🗑 선택 삭제</button>
             </form>
             <a class="btn-excel"
@@ -281,6 +305,12 @@
                href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}">
                 🗂 이미지
             </a>
+            {# 한 화면 최대 건수 (조회 폼과 연결, 바꾸면 바로 1페이지부터 다시 조회) #}
+            <select id="page_size" name="page_size" form="search-form" title="표시 건수"
+                    onchange="document.getElementById('search-form').submit();">
+                <option value="50" {{ 'selected' if page_size != 'all' else '' }}>50개</option>
+                <option value="all" {{ 'selected' if page_size == 'all' else '' }}>전체</option>
+            </select>
         </div>
     </div>
 
@@ -367,6 +397,36 @@
             {% endif %}
         </tbody>
     </table>
+
+    {# 페이징 (현재 조회 조건을 유지한 채 page 만 변경) #}
+    {% if total_pages > 1 %}
+    {% macro page_url(p) -%}
+        /textcatch?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}&page_size={{ page_size }}&page={{ p }}
+    {%- endmacro %}
+    <nav class="pager">
+        {% if page > 1 %}
+            <a href="{{ page_url(1) }}" title="처음">«</a>
+            <a href="{{ page_url(page - 1) }}" title="이전">‹</a>
+        {% else %}
+            <span class="disabled">«</span>
+            <span class="disabled">‹</span>
+        {% endif %}
+        {% for p in range(page_start, page_end + 1) %}
+            {% if p == page %}
+                <span class="current">{{ p }}</span>
+            {% else %}
+                <a href="{{ page_url(p) }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page < total_pages %}
+            <a href="{{ page_url(page + 1) }}" title="다음">›</a>
+            <a href="{{ page_url(total_pages) }}" title="마지막">»</a>
+        {% else %}
+            <span class="disabled">›</span>
+            <span class="disabled">»</span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </div>
 
 <script>
