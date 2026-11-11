@@ -182,10 +182,36 @@ def textCatchList():
     # 2. 목록 조회
     list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
 
+    # 2-1. 페이징 (page_size: '50' 기본 / 'all' 전체, page: 1부터)
+    #      총 건수·이미지 건수는 전체 기준으로 보여주고, 표에는 현재 페이지 건만 출력
+    page_size = 'all' if request.args.get('page_size') == 'all' else '50'
+    total_count = len(list_rows)
+    image_count = sum(1 for r in list_rows if r.get('image_filename'))
+    if page_size == 'all':
+        page, total_pages, page_rows = 1, 1, list_rows
+    else:
+        size = int(page_size)
+        total_pages = max(1, (total_count + size - 1) // size)
+        page = request.args.get('page', '1')
+        page = int(page) if page.isdigit() else 1
+        page = min(max(page, 1), total_pages)
+        page_rows = list_rows[(page - 1) * size: page * size]
+
+    # 페이지 번호는 현재 페이지 앞뒤 5개까지만 표시
+    page_start = max(1, page - 5)
+    page_end = min(total_pages, page + 5)
+
     # 3. 화면 전달 (date input은 YYYY-MM-DD 형식이 필요하므로 변환값도 함께 전달)
     return render_template(
         'textcatch/textcatch_list.html',
-        list_rows=list_rows,
+        list_rows=page_rows,
+        total_count=total_count,
+        image_count=image_count,
+        page_size=page_size,
+        page=page,
+        total_pages=total_pages,
+        page_start=page_start,
+        page_end=page_end,
         start_dt=start_dt,
         end_dt=end_dt,
         start_dt_view=f"{start_dt[0:4]}-{start_dt[4:6]}-{start_dt[6:8]}",
@@ -216,7 +242,9 @@ def textCatchDelete():
                             receiver=request.form.get('receiver', ''),
                             keyword=request.form.get('keyword', ''),
                             msg_type=request.form.get('msg_type', ''),
-                            gift_yn=request.form.get('gift_yn', '')))
+                            gift_yn=request.form.get('gift_yn', ''),
+                            page_size=request.form.get('page_size', ''),
+                            page=request.form.get('page', '')))
 
 
 @main_bp.route('/textcatch/image/<filename>')
