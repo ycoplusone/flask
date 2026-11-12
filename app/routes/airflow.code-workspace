@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "../../../proto_dashboard"
+		},
+		{
+			"path": "../../../canary_dagger"
 		}
 	],
 	"settings": {}
