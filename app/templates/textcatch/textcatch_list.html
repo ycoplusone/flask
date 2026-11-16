@@ -128,6 +128,140 @@
         cursor: pointer;
     }
     .js-fill:hover { color: #c0392b; }
+    .phone-line {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .phone-line + .phone-line { margin-top: 4px; }
+    .btn-url {
+        flex: none;
+        padding: 2px 6px;
+        min-height: 0;             /* style.css 모바일 button min-height: 40px 무효화 */
+        border: 1px solid #2c7be5;
+        border-radius: 4px;
+        background: #fff;
+        color: #2c7be5;
+        font-size: 12px;
+        line-height: 1.4;
+        cursor: pointer;
+    }
+    .btn-url:hover { background: #2c7be5; color: #fff; }
+    .btn-url.is-copied { background: #27ae60; border-color: #27ae60; color: #fff; }
+    .copy-toast {
+        position: fixed;
+        left: 50%;
+        bottom: 30px;
+        transform: translateX(-50%);
+        padding: 8px 16px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        font-size: 14px;
+        z-index: 1200;
+        pointer-events: none;
+    }
+    /* URL 미리보기 패널: 같은 화면 오른쪽에 iframe 으로 표시 (모바일은 전체 화면) */
+    .url-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(560px, 50vw);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border-left: 1px solid #ddd;
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
+        z-index: 900;
+    }
+    .url-panel[hidden] { display: none; }
+    .url-panel-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        background: #fafafa;
+        font-size: 13px;
+    }
+    .url-panel-head .url-phone { font-weight: bold; color: #27ae60; white-space: nowrap; }
+    .url-panel-head .url-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #888;
+    }
+    .url-panel-head button {
+        flex: none;
+        padding: 4px 8px;
+        min-height: 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .url-panel-head button:hover { background: #eee; }
+    .url-panel iframe { flex: 1; width: 100%; border: none; }
+    @media (max-width: 700px) {
+        .url-panel { width: 100vw; border-left: none; }
+    }
+
+    /* 화면캡쳐 영역 선택 오버레이 */
+    .cap-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: flex;
+        flex-direction: column;
+        background: rgba(0, 0, 0, 0.85);
+    }
+    .cap-overlay[hidden] { display: none; }
+    .cap-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: #222;
+        color: #eee;
+        font-size: 13px;
+    }
+    .cap-bar .cap-hint { flex: 1; min-width: 160px; }
+    .cap-bar button {
+        padding: 6px 12px;
+        min-height: 0;
+        border: none;
+        border-radius: 4px;
+        background: #555;
+        color: #fff;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .cap-bar button.primary { background: #e74c3c; }
+    .cap-bar button:disabled { background: #444; color: #888; cursor: not-allowed; }
+    .cap-stage {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+    }
+    .cap-wrap { position: relative; line-height: 0; cursor: crosshair; user-select: none; touch-action: none; }
+    .cap-wrap img { max-width: calc(100vw - 20px); max-height: calc(100vh - 80px); pointer-events: none; }
+    .cap-sel {
+        position: absolute;
+        border: 2px dashed #e74c3c;
+        background: rgba(231, 76, 60, 0.15);
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);   /* 선택 영역 밖은 어둡게 */
+        pointer-events: none;
+    }
+    .cap-sel[hidden] { display: none; }
     .type-mms { color: #e67e22; font-weight: bold; }
     .type-sms { color: #3498db; font-weight: bold; }
     .gift-y { color: #27ae60; font-weight: bold; }
@@ -328,7 +462,7 @@
             <col style="width: 70px;">
             <col style="width: 80px;">
             <col style="width: 130px;">
-            <col style="width: 130px;">
+            <col style="width: 160px;">  {# 수신번호: 번호 옆 URL 버튼 공간 확보 130 -> 160 #}
             <col>
             <col style="width: 110px;">
             <col style="width: 90px;">  {# 수신 시간 (yy.MM.dd / HH:mm 두 줄) 160 -> 90, 줄어든 폭은 메시지 내용으로 #}
@@ -368,8 +502,18 @@
                         {% if row.sender %}<span class="js-fill" data-target="sender" data-value="{{ row.sender }}" title="조회 조건에 입력">{{ row.sender }}</span>{% endif %}
                     </td>
                     <td data-label="수신번호">
+                        {# phone_numbers(본회선,듀얼 콤마 구분)를 한 줄에 하나씩 표시, 없으면 receiver 표시 #}
                         {# 수신번호는 국가번호 등 형식이 달라도 찾을 수 있도록 뒤 8자리만 전달 #}
-                        {% if row.receiver %}<span class="js-fill" data-target="receiver" data-value="{{ row.receiver[-8:] }}" title="조회 조건에 입력">{{ row.receiver }}</span>{% endif %}
+                        {% set phones = (row.phone_numbers or row.receiver or '').split(',') | map('trim') | reject('equalto', '') | list %}
+                        {% for phone in phones %}
+                        <div class="phone-line">
+                            <span class="js-fill" data-target="receiver" data-value="{{ phone[-8:] }}" title="조회 조건에 입력">{{ phone }}</span>
+                            {% if row.extracted_url %}
+                            {# 번호를 클립보드에 복사한 뒤 URL을 새 창(팝업)으로 열기 #}
+                            <button type="button" class="btn-url js-open-url" data-url="{{ row.extracted_url }}" data-phone="{{ phone }}" title="번호 복사 + URL 열기">🔗</button>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
                     </td>
                     <td class="text-left cell-block" data-label="메시지 내용">
                         <div class="msg-body">{{ row.message_body }}</div>
@@ -397,6 +541,36 @@
             {% endif %}
         </tbody>
     </table>
+
+    {# URL 미리보기 패널 (🔗 버튼 클릭 시 같은 화면 안에서 iframe 으로 열림, 모든 행이 이 패널 하나를 공유) #}
+    <div class="url-panel" id="url-panel" hidden>
+        <div class="url-panel-head">
+            <span class="url-phone" id="url-panel-phone"></span>
+            <span class="url-text" id="url-panel-url"></span>
+            <button type="button" id="url-panel-copy" title="번호 다시 복사">📋</button>
+            <button type="button" id="url-panel-popup" title="사이트가 안 보이면 새 창으로 열기">↗ 새 창</button>
+            <button type="button" id="url-panel-capture" title="화면캡쳐 (영역 선택 후 저장)">📷</button>
+            <button type="button" id="url-panel-close" title="닫기">&times;</button>
+        </div>
+        <iframe id="url-panel-frame" title="URL 미리보기" referrerpolicy="no-referrer"></iframe>
+    </div>
+
+    {# 화면캡쳐 영역 선택: 캡쳐한 이미지 위에서 드래그로 영역 지정 #}
+    <div class="cap-overlay" id="cap-overlay" hidden>
+        <div class="cap-bar">
+            <span class="cap-hint">패널 영역이 자동 선택됩니다 (Enter 저장 / 드래그로 다시 선택) · 파일명: <b id="cap-filename"></b></span>
+            <button type="button" class="primary" id="cap-save-sel" disabled>선택 영역 저장</button>
+            <button type="button" id="cap-save-panel">패널 영역 저장</button>
+            <button type="button" id="cap-save-all">전체 저장</button>
+            <button type="button" id="cap-cancel">취소</button>
+        </div>
+        <div class="cap-stage">
+            <div class="cap-wrap" id="cap-wrap">
+                <img id="cap-img" alt="캡쳐 이미지">
+                <div class="cap-sel" id="cap-sel" hidden></div>
+            </div>
+        </div>
+    </div>
 
     {# 페이징 (현재 조회 조건을 유지한 채 page 만 변경) #}
     {% if total_pages > 1 %}
@@ -493,6 +667,261 @@ document.querySelectorAll('.js-fill').forEach(el => {
         input.value = el.dataset.value;
         input.focus();
     });
+});
+
+// 수신번호 옆 URL 버튼: 번호를 클립보드에 복사하고 URL을 새 창(팝업)으로 열기
+function copyText(value) {
+    // 새 창이 열려 포커스를 잃기 전에 복사: execCommand(동기, http 에서도 동작) 우선, 실패 시 Clipboard API
+    if (legacyCopy(value)) return Promise.resolve(true);
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(value).then(() => true, () => false);
+    }
+    return Promise.resolve(false);
+}
+function legacyCopy(value) {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+}
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'copy-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1500);
+}
+// URL 패널: 하나의 iframe 패널을 모든 🔗 버튼이 공유 (다른 번호를 누르면 같은 패널 내용만 바뀜)
+const urlPanel = {
+    el:    document.getElementById('url-panel'),
+    frame: document.getElementById('url-panel-frame'),
+    phone: document.getElementById('url-panel-phone'),
+    url:   document.getElementById('url-panel-url'),
+    open(url, phone) {
+        if (this.frame.src !== url) this.frame.src = url;
+        this.phone.textContent = phone;
+        this.url.textContent = url;
+        this.url.title = url;
+        this.el.hidden = false;
+    },
+    close() {
+        this.el.hidden = true;
+        this.frame.src = 'about:blank';
+    },
+};
+function notifyCopied(ok, phone, btn) {
+    if (ok) {
+        if (btn) {
+            btn.classList.add('is-copied');
+            setTimeout(() => btn.classList.remove('is-copied'), 1500);
+        }
+        showToast(`${phone} 복사됨`);
+    } else {
+        prompt('번호를 복사하세요 (Ctrl+C)', phone);
+    }
+}
+document.querySelectorAll('.js-open-url').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const phone = btn.dataset.phone;
+        copyText(phone).then(ok => notifyCopied(ok, phone, btn));
+        urlPanel.open(btn.dataset.url, phone);
+    });
+});
+document.getElementById('url-panel-copy').addEventListener('click', () => {
+    const phone = urlPanel.phone.textContent;
+    copyText(phone).then(ok => notifyCopied(ok, phone));
+});
+// 사이트가 iframe 표시를 막는 경우(X-Frame-Options 등) 대비: 이름 있는 팝업 하나를 재사용
+document.getElementById('url-panel-popup').addEventListener('click', () => {
+    const w = Math.min(1000, screen.availWidth), h = Math.min(800, screen.availHeight);
+    const left = Math.max(0, (screen.availWidth - w) / 2), top = Math.max(0, (screen.availHeight - h) / 2);
+    window.open(urlPanel.url.textContent, 'textcatch_url', `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+});
+document.getElementById('url-panel-close').addEventListener('click', () => urlPanel.close());
+
+// ===== 화면캡쳐 =====
+// 패널(iframe) 안은 다른 사이트라 페이지 코드로 직접 그릴 수 없어서,
+// 브라우저 화면 공유(getDisplayMedia)로 현재 탭을 한 장 찍은 뒤 영역을 잘라 PNG 로 저장한다.
+// (https 또는 localhost 접속, PC 크롬/엣지/파이어폭스에서만 동작)
+const capture = {
+    overlay: document.getElementById('cap-overlay'),
+    wrap:    document.getElementById('cap-wrap'),
+    img:     document.getElementById('cap-img'),
+    sel:     document.getElementById('cap-sel'),
+    btnSel:  document.getElementById('cap-save-sel'),
+    canvas:  null,      // 캡쳐 원본
+    panelRect: null,    // 캡쳐 원본 기준 패널(iframe) 영역
+    filename: '',
+    rect: null,         // 캡쳐 원본 기준 선택 영역 {x, y, w, h}
+};
+
+function capFilename(phone) {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    const ts = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    return `${(phone || 'capture').replace(/[^0-9A-Za-z-]/g, '')}_${ts}.png`;
+}
+
+// 화면 공유는 첫 캡쳐 때 한 번만 허락받고, 페이지를 떠날 때까지 이어 둔다.
+// 이후 캡쳐는 이어져 있는 공유 화면에서 프레임만 꺼내므로 확인 창이 다시 뜨지 않음.
+// (브라우저 상단의 "공유 중지"를 누르면 끊기고, 다음 캡쳐 때 다시 한 번 확인 창이 뜸)
+const share = { stream: null, video: null };
+
+async function ensureShare() {
+    if (share.stream && share.stream.getVideoTracks().some(t => t.readyState === 'live')) return false;
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,          // 크롬: 현재 탭을 바로 선택
+        selfBrowserSurface: 'include',
+    });
+    const video = document.createElement('video');
+    video.muted = true;
+    video.srcObject = stream;
+    await video.play();
+    // 사용자가 브라우저의 "공유 중지"를 누르면 정리 → 다음 캡쳐 때 다시 요청
+    stream.getVideoTracks().forEach(t => t.addEventListener('ended', stopShare));
+    share.stream = stream;
+    share.video = video;
+    return true;   // 새로 공유 시작함
+}
+function stopShare() {
+    if (share.stream) share.stream.getTracks().forEach(t => t.stop());
+    share.stream = null;
+    share.video = null;
+}
+window.addEventListener('pagehide', stopShare);   // 페이지 이동/새로고침/닫기 시 공유 종료
+
+async function grabScreen() {
+    const isNew = await ensureShare();
+    // 새로 공유했으면 확인 창이 사라질 때까지, 이어진 공유면 최신 화면이 반영될 때까지 잠깐 대기
+    await new Promise(r => setTimeout(r, isNew ? 400 : 150));
+    const video = share.video;
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth;
+    c.height = video.videoHeight;
+    c.getContext('2d').drawImage(video, 0, 0);
+    return c;
+}
+
+document.getElementById('url-panel-capture').addEventListener('click', async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        alert('이 브라우저/접속 환경에서는 화면캡쳐를 사용할 수 없습니다.\n(PC 크롬·엣지에서 https 또는 localhost 로 접속해야 합니다)');
+        return;
+    }
+    const filename = capFilename(urlPanel.phone.textContent);   // 버튼을 누른 시각 기준
+    let canvas;
+    try {
+        canvas = await grabScreen();
+    } catch (e) {
+        if (e.name !== 'NotAllowedError') alert('화면캡쳐 실패: ' + e.message);
+        return;   // 사용자가 공유를 취소한 경우는 조용히 종료
+    }
+    // 현재 탭을 공유했다면 캡쳐 크기 ≒ 화면 크기 × 배율 → 패널 위치를 그 배율로 환산
+    const scale = canvas.width / window.innerWidth;
+    const r = urlPanel.frame.getBoundingClientRect();
+    capture.panelRect = { x: r.left * scale, y: r.top * scale, w: r.width * scale, h: r.height * scale };
+    capture.canvas = canvas;
+    capture.filename = filename;
+    capture.rect = null;
+    capture.sel.hidden = true;
+    capture.btnSel.disabled = true;
+    document.getElementById('cap-filename').textContent = filename;
+    // 현재 탭을 공유한 경우(가로세로 비율이 화면과 같음)에만 패널 영역을 자동 선택
+    const sameTab = Math.abs(canvas.height / scale - window.innerHeight) < 40;
+    capture.img.onload = () => { if (sameTab) setSelection(capture.panelRect); };
+    capture.img.src = canvas.toDataURL('image/png');
+    capture.overlay.hidden = false;
+});
+
+// 캡쳐 원본 기준 영역을 선택 상태로 표시 (표시 크기로 환산해서 박스 그림)
+function setSelection(rect) {
+    const k = capture.img.getBoundingClientRect().width / capture.canvas.width;
+    Object.assign(capture.sel.style, {
+        left: rect.x * k + 'px', top: rect.y * k + 'px',
+        width: rect.w * k + 'px', height: rect.h * k + 'px',
+    });
+    capture.sel.hidden = false;
+    capture.rect = rect;
+    capture.btnSel.disabled = false;
+    capture.btnSel.focus();   // 바로 Enter 로 저장 가능
+}
+
+function saveCapture(rect) {
+    const src = capture.canvas;
+    const x = Math.max(0, Math.round(rect.x)), y = Math.max(0, Math.round(rect.y));
+    const w = Math.min(src.width - x, Math.round(rect.w)), h = Math.min(src.height - y, Math.round(rect.h));
+    if (w < 2 || h < 2) return;
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    out.getContext('2d').drawImage(src, x, y, w, h, 0, 0, w, h);
+    out.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = capture.filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        showToast(`${capture.filename} 저장됨`);
+        closeCapture();
+    }, 'image/png');
+}
+function closeCapture() {
+    capture.overlay.hidden = true;
+    capture.img.removeAttribute('src');
+    capture.canvas = null;
+}
+
+// 드래그로 영역 선택 (마우스/터치 공통 pointer 이벤트)
+(function () {
+    let start = null;
+    const toImg = e => {   // 화면 좌표 → 표시된 이미지 내부 좌표(px)
+        const b = capture.img.getBoundingClientRect();
+        return {
+            x: Math.min(Math.max(e.clientX - b.left, 0), b.width),
+            y: Math.min(Math.max(e.clientY - b.top, 0), b.height),
+            b,
+        };
+    };
+    capture.wrap.addEventListener('pointerdown', e => {
+        start = toImg(e);
+        capture.wrap.setPointerCapture(e.pointerId);   // 클릭만 하면 기존 선택 유지, 드래그해야 새로 선택
+    });
+    capture.wrap.addEventListener('pointermove', e => {
+        if (!start) return;
+        const p = toImg(e);
+        const x = Math.min(start.x, p.x), y = Math.min(start.y, p.y);
+        const w = Math.abs(p.x - start.x), h = Math.abs(p.y - start.y);
+        if (w < 3 || h < 3) return;   // 살짝 움직인 정도는 무시 (기존 선택 유지)
+        Object.assign(capture.sel.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+        capture.sel.hidden = false;
+        // 표시 크기 → 캡쳐 원본 크기로 환산
+        const k = capture.canvas.width / p.b.width;
+        capture.rect = { x: x * k, y: y * k, w: w * k, h: h * k };
+        capture.btnSel.disabled = false;
+    });
+    const end = () => { start = null; };
+    capture.wrap.addEventListener('pointerup', end);
+    capture.wrap.addEventListener('pointercancel', end);
+})();
+
+capture.btnSel.addEventListener('click', () => capture.rect && saveCapture(capture.rect));
+document.getElementById('cap-save-panel').addEventListener('click', () => saveCapture(capture.panelRect));
+document.getElementById('cap-save-all').addEventListener('click', () =>
+    saveCapture({ x: 0, y: 0, w: capture.canvas.width, h: capture.canvas.height }));
+document.getElementById('cap-cancel').addEventListener('click', closeCapture);
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!document.getElementById('cap-overlay').hidden) { closeCapture(); return; }   // 캡쳐 선택 중이면 그것만 닫기
+    if (!urlPanel.el.hidden) urlPanel.close();
 });
 
 (function () {

@@ -130,45 +130,52 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
     gift_yn           : 기프티콘여부 'A' 미확인 / 'N' 아님 / 'Y' 대상 / '' 전체 (선택)
     """
     sql = """
-        SELECT id
-             , sender
-             , receiver
-             , message_body
+        SELECT a.id
+             , a.sender
+             , a.receiver
+             , a.message_body
              -- 과거 데이터에 문자열 'None'이 들어간 건이 있어 빈 값으로 정규화
-             , NULLIF(image_filename, 'None') AS image_filename
-             , received_at
-             , created_at
-             , base_dt
-             , TIMESTAMPDIFF(MINUTE, received_at, created_at) dely_tm
-             , COALESCE(gift_yn, 'A') AS gift_yn
-             , COALESCE(gift_score, 0) AS gift_score
-        FROM received_messages
-        WHERE base_dt BETWEEN :start_dt AND :end_dt
-        AND use_yn = 'Y'
-        AND COALESCE(SENDER, '') != ''
+             , NULLIF(a.image_filename, 'None') AS image_filename
+             , a.received_at
+             , a.created_at
+             , a.base_dt
+             , TIMESTAMPDIFF(MINUTE, a.received_at, a.created_at) dely_tm
+             , COALESCE(a.gift_yn, 'A') AS gift_yn
+             , COALESCE(a.gift_score, 0) AS gift_score
+             , REGEXP_SUBSTR(a.message_body, 'https?://[^ \t\r\n"''<>()]+') AS extracted_url
+             , b.phone_numbers
+        FROM received_messages a
+        left outer join (  -- 본회선/듀얼 전번호 출력
+	        select substr( trim(z.receiver) ,-8) receiver , z.main_yn 
+	        , (select group_concat( trim(receiver) order by main_yn desc SEPARATOR ','  ) from received_phone_list where z.group_id  = group_id  ) phone_numbers
+	        from received_phone_list z
+        ) b on ( substr(trim(a.receiver),-8) = b.receiver )
+        WHERE a.base_dt BETWEEN :start_dt AND :end_dt
+        AND a.use_yn = 'Y'
+        AND COALESCE(a.SENDER, '') != ''
     """
     params = {'start_dt': start_dt, 'end_dt': end_dt}
 
     if sender:
-        sql += " AND sender LIKE :sender "
+        sql += " AND a.sender LIKE :sender "
         params['sender'] = f"%{sender}%"
 
     if receiver:
-        sql += " AND receiver LIKE :receiver "
+        sql += " AND a.receiver LIKE :receiver "
         params['receiver'] = f"%{receiver}%"
 
     if keyword:
-        sql += " AND message_body LIKE :keyword "
+        sql += " AND a.message_body LIKE :keyword "
         params['keyword'] = f"%{keyword}%"
 
     # image_filename에 문자열 'None'이 들어간 과거 데이터도 SMS로 취급
     if msg_type == 'MMS':
-        sql += " AND COALESCE(NULLIF(image_filename, 'None'), '') != '' "
+        sql += " AND COALESCE(NULLIF(a.image_filename, 'None'), '') != '' "
     elif msg_type == 'SMS':
-        sql += " AND COALESCE(NULLIF(image_filename, 'None'), '') = '' "
+        sql += " AND COALESCE(NULLIF(a.image_filename, 'None'), '') = '' "
 
     if gift_yn in ('A', 'N', 'Y'):
-        sql += " AND COALESCE(gift_yn, 'A') = :gift_yn "
+        sql += " AND COALESCE(a.gift_yn, 'A') = :gift_yn "
         params['gift_yn'] = gift_yn
 
     sql += " ORDER BY id DESC  "
@@ -372,5 +379,115 @@ def deleteGiftWord(words: list) -> int:
     """).bindparams(bindparam('words', expanding=True))
 
     result = db.session.execute(sql, {'words': words})
+    db.session.commit()
+    return result.rowcount
+
+
+# ------------------------------------------------------------------
+# 수신 번호 (received_phone_list) 관리
+#   컬럼 : receiver(PK) / group_id / main_yn / company / custom_no / pass_flag / notes / created_dt
+#   group_id 가 같은 번호끼리 본회선(main_yn=Y) + 듀얼(N) 묶음
+# ------------------------------------------------------------------
+PHONE_COLS = ('group_id', 'receiver', 'main_yn', 'company', 'custom_no', 'pass_flag', 'notes')
+
+
+def getPhoneList(keyword: str = '', company: str = ''):
+    """
+    수신 번호 목록 조회.
+    keyword : 전화번호 / 그룹 / 사설구분번호 / 메모 부분검색 (선택)
+    company : 통신사 일치 검색 (선택)
+    """
+    sql = """
+        SELECT group_id, receiver, main_yn, company, custom_no, pass_flag, notes, created_dt
+        FROM received_phone_list
+        WHERE 1 = 1
+    """
+    params = {}
+    if keyword:
+        sql += """ AND ( receiver LIKE :keyword OR group_id = :keyword_eq OR custom_no LIKE :keyword
+                         OR notes LIKE :keyword ) """
+        params['keyword'] = f"%{keyword}%"
+        params['keyword_eq'] = keyword
+    if company:
+        sql += " AND company = :company "
+        params['company'] = company
+    # 숫자 그룹은 숫자 순서로, 같은 그룹은 본회선(Y) 먼저
+    sql += " ORDER BY CAST(group_id AS UNSIGNED), group_id, main_yn DESC, receiver "
+
+    result = db.session.execute(text(sql), params)
+    return [dict(row) for row in result.mappings()]
+
+
+def getPhoneCodeList():
+    """입력 보조용 통신사 / 패스 값 목록과 다음 그룹 번호"""
+    companies = [r[0] for r in db.session.execute(text(
+        "SELECT DISTINCT company FROM received_phone_list WHERE COALESCE(company, '') != '' ORDER BY company"))]
+    pass_flags = [r[0] for r in db.session.execute(text(
+        "SELECT DISTINCT pass_flag FROM received_phone_list WHERE COALESCE(pass_flag, '') != '' ORDER BY pass_flag"))]
+    max_group = db.session.execute(text(
+        "SELECT MAX(CAST(group_id AS UNSIGNED)) FROM received_phone_list")).scalar() or 0
+    return companies, pass_flags, int(max_group) + 1
+
+
+def _phoneExists(receiver: str) -> bool:
+    return db.session.execute(
+        text("SELECT 1 FROM received_phone_list WHERE receiver = :receiver"),
+        {'receiver': receiver},
+    ).first() is not None
+
+
+def addPhone(data: dict) -> bool:
+    """
+    수신 번호 등록.
+    반환 : 등록되면 True, 이미 있는 번호(PK 중복)면 False
+    """
+    sql = text("""
+        INSERT IGNORE INTO received_phone_list
+              (group_id, receiver, main_yn, company, custom_no, pass_flag, notes, created_dt)
+        VALUES (:group_id, :receiver, :main_yn, :company, :custom_no, :pass_flag, :notes, NOW())
+    """)
+    result = db.session.execute(sql, {c: data.get(c) for c in PHONE_COLS})
+    db.session.commit()
+    return result.rowcount > 0
+
+
+def updatePhone(org_receiver: str, data: dict) -> str:
+    """
+    수신 번호 수정 (receiver 가 PK 이므로 원래 번호(org_receiver) 기준으로 갱신).
+    반환 : 'ok' 수정 완료 / 'dup' 바꾸려는 번호가 이미 존재 / 'none' 대상 없음
+    """
+    if data['receiver'] != org_receiver and _phoneExists(data['receiver']):
+        return 'dup'
+
+    sql = text("""
+        UPDATE received_phone_list
+        SET group_id  = :group_id
+          , receiver  = :receiver
+          , main_yn   = :main_yn
+          , company   = :company
+          , custom_no = :custom_no
+          , pass_flag = :pass_flag
+          , notes     = :notes
+        WHERE receiver = :org_receiver
+    """)
+    params = {c: data.get(c) for c in PHONE_COLS}
+    params['org_receiver'] = org_receiver
+    result = db.session.execute(sql, params)
+    db.session.commit()
+    # 값이 그대로면 MySQL rowcount 가 0 일 수 있으므로 존재 여부로 판단
+    if result.rowcount == 0:
+        return 'ok' if _phoneExists(data['receiver']) else 'none'
+    return 'ok'
+
+
+def deletePhone(receivers: list) -> int:
+    """수신 번호 삭제 (실제 DELETE). 반환 : 삭제된 건수"""
+    if not receivers:
+        return 0
+    sql = text("""
+        DELETE FROM received_phone_list
+        WHERE receiver IN :receivers
+    """).bindparams(bindparam('receivers', expanding=True))
+    result = db.session.execute(sql, {'receivers': receivers})
     db.session.commit()
     return result.rowcount
