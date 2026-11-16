@@ -748,8 +748,9 @@ document.getElementById('url-panel-close').addEventListener('click', () => urlPa
 
 // ===== 화면캡쳐 =====
 // 패널(iframe) 안은 다른 사이트라 페이지 코드로 직접 그릴 수 없어서,
-// 브라우저 화면 공유(getDisplayMedia)로 현재 탭을 한 장 찍은 뒤 영역을 잘라 PNG 로 저장한다.
-// (https 또는 localhost 접속, PC 크롬/엣지/파이어폭스에서만 동작)
+// 1) 확장 프로그램이 있으면 확장 프로그램으로 현재 탭을 찍음 (http 가능, 확인 창 없음)
+// 2) 없으면 브라우저 화면 공유(getDisplayMedia)로 찍음 (https 또는 localhost 접속에서만 동작)
+// 찍은 뒤 영역을 잘라 PNG 로 저장한다.
 const capture = {
     overlay: document.getElementById('cap-overlay'),
     wrap:    document.getElementById('cap-wrap'),
@@ -798,7 +799,37 @@ function stopShare() {
 }
 window.addEventListener('pagehide', stopShare);   // 페이지 이동/새로고침/닫기 시 공유 종료
 
+// 확장 프로그램(extension/textcatch_capture)이 설치되어 있으면 http 접속에서도 확인 창 없이 캡쳐
+function hasCaptureExtension() {
+    return document.documentElement.dataset.textcatchCapture === '1';
+}
+function grabByExtension() {
+    return new Promise((resolve, reject) => {
+        const id = Date.now() + '-' + Math.random();
+        const timer = setTimeout(() => { window.removeEventListener('message', onMsg); reject(new Error('확장 프로그램 응답 없음')); }, 5000);
+        function onMsg(e) {
+            if (e.source !== window || !e.data || e.data.type !== 'TEXTCATCH_CAPTURE_RES' || e.data.id !== id) return;
+            clearTimeout(timer);
+            window.removeEventListener('message', onMsg);
+            if (e.data.error || !e.data.dataUrl) return reject(new Error(e.data.error || '캡쳐 실패'));
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = img.naturalWidth;
+                c.height = img.naturalHeight;
+                c.getContext('2d').drawImage(img, 0, 0);
+                resolve(c);
+            };
+            img.onerror = () => reject(new Error('캡쳐 이미지 로드 실패'));
+            img.src = e.data.dataUrl;
+        }
+        window.addEventListener('message', onMsg);
+        window.postMessage({ type: 'TEXTCATCH_CAPTURE_REQ', id }, window.location.origin);
+    });
+}
+
 async function grabScreen() {
+    if (hasCaptureExtension()) return grabByExtension();
     const isNew = await ensureShare();
     // 새로 공유했으면 확인 창이 사라질 때까지, 이어진 공유면 최신 화면이 반영될 때까지 잠깐 대기
     await new Promise(r => setTimeout(r, isNew ? 400 : 150));
@@ -811,8 +842,11 @@ async function grabScreen() {
 }
 
 document.getElementById('url-panel-capture').addEventListener('click', async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        alert('이 브라우저/접속 환경에서는 화면캡쳐를 사용할 수 없습니다.\n(PC 크롬·엣지에서 https 또는 localhost 로 접속해야 합니다)');
+    if (!hasCaptureExtension() && !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) {
+        // http 접속은 화면 공유가 막혀 있으므로 확장 프로그램 설치 안내
+        if (confirm('화면캡쳐 확장 프로그램이 설치되어 있지 않습니다.\n(PC 크롬·엣지 전용, http 접속에서도 동작)\n\n설치 파일(zip)을 내려받을까요?\n압축 해제 후 안의 README.txt 순서대로 설치하세요.')) {
+            location.href = '/textcatch/capture_extension.zip';
+        }
         return;
     }
     const filename = capFilename(urlPanel.phone.textContent);   // 버튼을 누른 시각 기준

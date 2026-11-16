@@ -653,3 +653,29 @@ def phoneDelete():
         deleted = deletePhone(receivers)
         flash(f'{deleted}건을 삭제했습니다.', 'info')
     return _redirectPhone()
+
+
+# ------------------------------------------------------------------
+# 화면캡쳐 크롬 확장 프로그램 내려받기 (extension/textcatch_capture 폴더를 zip 으로 묶어 전달)
+#   http 접속에서는 브라우저 화면 공유가 막혀 있어 확장 프로그램으로 캡쳐함
+# ------------------------------------------------------------------
+CAPTURE_EXT_FOLDER = os.path.join(PROJECT_ROOT, 'extension', 'textcatch_capture')
+
+
+@main_bp.route('/textcatch/capture_extension.zip', methods=['GET'])
+def captureExtensionZip():
+    """확장 프로그램 폴더를 textcatch_capture/ 아래에 담은 zip 으로 내려줌"""
+    import io
+    import zipfile
+
+    if not os.path.isdir(CAPTURE_EXT_FOLDER):
+        abort(404)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for name in sorted(os.listdir(CAPTURE_EXT_FOLDER)):
+            path = os.path.join(CAPTURE_EXT_FOLDER, name)
+            if os.path.isfile(path):
+                zf.write(path, arcname=f'textcatch_capture/{name}')
+    buf.seek(0)
+    return send_file(buf, mimetype='application/zip', as_attachment=True,
+                     download_name='textcatch_capture.zip')
