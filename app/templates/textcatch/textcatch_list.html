@@ -205,10 +205,49 @@
         cursor: pointer;
         font-size: 13px;
     }
-    .url-panel-head button:hover { background: #eee; }
+    .url-panel-head button:hover, .url-panel-head .btn-ext:hover { background: #eee; }
+    .url-panel-head .btn-ext {
+        flex: none;
+        padding: 4px 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+        font-size: 13px;
+        line-height: 1.4;
+        text-decoration: none;
+    }
     .url-panel iframe { flex: 1; width: 100%; border: none; }
     @media (max-width: 700px) {
         .url-panel { width: 100vw; border-left: none; }
+    }
+
+    /* 새 창(팝업)이 열려 있는 동안 표시하는 캡쳐 막대 */
+    .popup-bar {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 950;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: #2c3e50;
+        color: #fff;
+        font-size: 13px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    }
+    .popup-bar[hidden] { display: none; }
+    .popup-bar .hint { color: #bbb; font-size: 12px; }
+    .popup-bar button {
+        padding: 4px 10px;
+        min-height: 0;
+        border: none;
+        border-radius: 4px;
+        background: #e74c3c;
+        color: #fff;
+        cursor: pointer;
+        font-size: 13px;
     }
 
     /* 화면캡쳐 영역 선택 오버레이 */
@@ -550,9 +589,18 @@
             <button type="button" id="url-panel-copy" title="번호 다시 복사">📋</button>
             <button type="button" id="url-panel-popup" title="사이트가 안 보이면 새 창으로 열기">↗ 새 창</button>
             <button type="button" id="url-panel-capture" title="화면캡쳐 (영역 선택 후 저장)">📷</button>
+            {# 확장 프로그램 설치/업데이트 파일 (localhost 는 화면 공유가 되어 설치 안내가 뜨지 않으므로 항상 표시) #}
+            <a class="btn-ext" href="/textcatch/capture_extension.zip" title="화면캡쳐 확장 프로그램 설치/업데이트 파일(zip) 받기">🧩</a>
             <button type="button" id="url-panel-close" title="닫기">&times;</button>
         </div>
         <iframe id="url-panel-frame" title="URL 미리보기" referrerpolicy="no-referrer"></iframe>
+    </div>
+
+    {# 새 창(팝업)으로 연 경우 캡쳐 막대 (확장 프로그램 필요) #}
+    <div class="popup-bar" id="popup-bar" hidden>
+        <span>새 창: <b id="popup-bar-phone"></b></span>
+        <span class="hint">새 창의 📷 캡쳐 또는 Alt+Shift+S</span>
+        <button type="button" id="popup-bar-capture" title="새 창 화면캡쳐">📷 새 창 캡쳐</button>
     </div>
 
     {# 화면캡쳐 영역 선택: 캡쳐한 이미지 위에서 드래그로 영역 지정 #}
@@ -742,8 +790,31 @@ document.getElementById('url-panel-copy').addEventListener('click', () => {
 document.getElementById('url-panel-popup').addEventListener('click', () => {
     const w = Math.min(1000, screen.availWidth), h = Math.min(800, screen.availHeight);
     const left = Math.max(0, (screen.availWidth - w) / 2), top = Math.max(0, (screen.availHeight - h) / 2);
-    window.open(urlPanel.url.textContent, 'textcatch_url', `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+    // noopener 를 쓰지 않아야 확장 프로그램이 "이 화면이 연 새 창"을 찾을 수 있음
+    const win = window.open(urlPanel.url.textContent, 'textcatch_url', `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+    popupState.open(win, urlPanel.phone.textContent);
 });
+
+// 새 창(팝업) 상태: 캡쳐 파일명에 쓸 번호를 기억하고, 열려 있는 동안 캡쳐 막대 표시
+const popupState = {
+    win: null,
+    phone: '',
+    timer: null,
+    bar: document.getElementById('popup-bar'),
+    open(win, phone) {
+        this.win = win;
+        this.phone = phone;
+        document.getElementById('popup-bar-phone').textContent = phone;
+        this.bar.hidden = !hasCaptureExtension();   // 새 창 캡쳐는 확장 프로그램이 있어야 가능
+        clearInterval(this.timer);
+        this.timer = setInterval(() => {            // 새 창이 닫히면 막대 숨김
+            if (!this.win || this.win.closed) {
+                this.bar.hidden = true;
+                clearInterval(this.timer);
+            }
+        }, 1000);
+    },
+};
 document.getElementById('url-panel-close').addEventListener('click', () => urlPanel.close());
 
 // ===== 화면캡쳐 =====
@@ -803,7 +874,22 @@ window.addEventListener('pagehide', stopShare);   // 페이지 이동/새로고�
 function hasCaptureExtension() {
     return document.documentElement.dataset.textcatchCapture === '1';
 }
-function grabByExtension() {
+function dataUrlToCanvas(dataUrl) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            c.getContext('2d').drawImage(img, 0, 0);
+            resolve(c);
+        };
+        img.onerror = () => reject(new Error('캡쳐 이미지 로드 실패'));
+        img.src = dataUrl;
+    });
+}
+// mode: 'self' 현재 탭 / 'popup' 이 화면이 연 새 창
+function grabByExtension(mode = 'self') {
     return new Promise((resolve, reject) => {
         const id = Date.now() + '-' + Math.random();
         const timer = setTimeout(() => { window.removeEventListener('message', onMsg); reject(new Error('확장 프로그램 응답 없음')); }, 5000);
@@ -812,19 +898,10 @@ function grabByExtension() {
             clearTimeout(timer);
             window.removeEventListener('message', onMsg);
             if (e.data.error || !e.data.dataUrl) return reject(new Error(e.data.error || '캡쳐 실패'));
-            const img = new Image();
-            img.onload = () => {
-                const c = document.createElement('canvas');
-                c.width = img.naturalWidth;
-                c.height = img.naturalHeight;
-                c.getContext('2d').drawImage(img, 0, 0);
-                resolve(c);
-            };
-            img.onerror = () => reject(new Error('캡쳐 이미지 로드 실패'));
-            img.src = e.data.dataUrl;
+            dataUrlToCanvas(e.data.dataUrl).then(resolve, reject);
         }
         window.addEventListener('message', onMsg);
-        window.postMessage({ type: 'TEXTCATCH_CAPTURE_REQ', id }, window.location.origin);
+        window.postMessage({ type: 'TEXTCATCH_CAPTURE_REQ', id, mode }, window.location.origin);
     });
 }
 
@@ -860,18 +937,44 @@ document.getElementById('url-panel-capture').addEventListener('click', async () 
     // 현재 탭을 공유했다면 캡쳐 크기 ≒ 화면 크기 × 배율 → 패널 위치를 그 배율로 환산
     const scale = canvas.width / window.innerWidth;
     const r = urlPanel.frame.getBoundingClientRect();
-    capture.panelRect = { x: r.left * scale, y: r.top * scale, w: r.width * scale, h: r.height * scale };
+    const panelRect = { x: r.left * scale, y: r.top * scale, w: r.width * scale, h: r.height * scale };
+    // 현재 탭을 공유한 경우(가로세로 비율이 화면과 같음)에만 패널 영역을 자동 선택
+    const sameTab = Math.abs(canvas.height / scale - window.innerHeight) < 40;
+    openCapture(canvas, filename, panelRect, sameTab);
+});
+
+// 캡쳐 이미지로 영역 선택 화면 열기 (autoSelect 면 panelRect 를 미리 선택)
+function openCapture(canvas, filename, panelRect, autoSelect) {
+    capture.panelRect = panelRect;
     capture.canvas = canvas;
     capture.filename = filename;
     capture.rect = null;
     capture.sel.hidden = true;
     capture.btnSel.disabled = true;
     document.getElementById('cap-filename').textContent = filename;
-    // 현재 탭을 공유한 경우(가로세로 비율이 화면과 같음)에만 패널 영역을 자동 선택
-    const sameTab = Math.abs(canvas.height / scale - window.innerHeight) < 40;
-    capture.img.onload = () => { if (sameTab) setSelection(capture.panelRect); };
+    capture.img.onload = () => { if (autoSelect) setSelection(capture.panelRect); };
     capture.img.src = canvas.toDataURL('image/png');
     capture.overlay.hidden = false;
+}
+
+// 새 창 캡쳐: 새 창 전체가 대상이므로 전체를 자동 선택
+function openPopupCapture(canvas) {
+    const filename = capFilename(popupState.phone || urlPanel.phone.textContent);
+    openCapture(canvas, filename, { x: 0, y: 0, w: canvas.width, h: canvas.height }, true);
+}
+// ① 새 창에서 단축키(Alt+Shift+S) → 확장 프로그램이 찍어서 이 화면으로 보내줌
+window.addEventListener('message', (e) => {
+    if (e.source !== window || !e.data || e.data.type !== 'TEXTCATCH_POPUP_CAPTURE') return;
+    if (e.data.error) { alert('새 창 캡쳐 실패: ' + e.data.error); return; }
+    dataUrlToCanvas(e.data.dataUrl).then(openPopupCapture, err => alert('새 창 캡쳐 실패: ' + err.message));
+});
+// ② 이 화면의 [📷 새 창 캡쳐] 버튼 (새 창이 이 화면에 완전히 가려져 있으면 예전 화면이 찍힐 수 있음)
+document.getElementById('popup-bar-capture').addEventListener('click', async () => {
+    try {
+        openPopupCapture(await grabByExtension('popup'));
+    } catch (err) {
+        alert('새 창 캡쳐 실패: ' + err.message);
+    }
 });
 
 // 캡쳐 원본 기준 영역을 선택 상태로 표시 (표시 크기로 환산해서 박스 그림)

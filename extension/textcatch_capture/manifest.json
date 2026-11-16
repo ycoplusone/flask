@@ -1,9 +1,11 @@
 {
   "manifest_version": 3,
   "name": "TextCatch 화면캡쳐",
-  "version": "1.0.0",
-  "description": "텍스트 캐치 수신 메시지 화면의 URL 패널을 캡쳐합니다. (http 접속에서도 동작)",
-  "permissions": [],
+  "version": "1.2.0",
+  "description": "텍스트 캐치 수신 메시지 화면의 URL 패널 / 새 창을 캡쳐합니다. (http 접속에서도 동작)",
+  "permissions": [
+    "scripting"
+  ],
   "host_permissions": [
     "<all_urls>"
   ],
@@ -23,5 +25,13 @@
       ],
       "run_at": "document_start"
     }
-  ]
+  ],
+  "commands": {
+    "capture-popup": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "새 창(팝업) 화면캡쳐 → 텍스트 캐치 화면으로 보내기"
+    }
+  }
 }
