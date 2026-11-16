@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
 from app.logics.textCatch import getGiftWordList, addGiftWord, updateGiftWord, deleteGiftWord
+from app.logics.textCatch import getPhoneList, getPhoneCodeList, addPhone, updatePhone, deletePhone
 
 # 'main'이라는 이름의 블루프린트 생성
 main_bp = Blueprint('textCatch', __name__)
@@ -550,3 +551,105 @@ def giftWordDelete():
         flash(f'{deleted}건을 삭제했습니다.', 'info')
 
     return _redirectGiftWord()
+
+
+# ------------------------------------------------------------------
+# 수신 번호 관리 화면 (received_phone_list)
+# ------------------------------------------------------------------
+# 컬럼 길이 제한 (테이블 정의 기준)
+PHONE_MAX_LEN = {
+    'group_id': 32, 'receiver': 32, 'company': 32, 'custom_no': 64, 'pass_flag': 32, 'notes': 256,
+}
+PHONE_LABEL = {
+    'group_id': '그룹', 'receiver': '전화번호', 'company': '통신사', 'custom_no': '사설번호',
+    'pass_flag': '패스', 'notes': '메모',
+}
+
+
+def _readPhoneForm():
+    """
+    등록/수정 폼 값 읽기 + 검증.
+    반환 : (data, 오류메시지) — 오류가 없으면 메시지는 None
+    """
+    data = {c: (request.form.get(c) or '').strip() for c in PHONE_MAX_LEN}
+    # 전화번호는 숫자만 저장 (010-1234-5678 → 01012345678)
+    data['receiver'] = ''.join(ch for ch in data['receiver'] if ch.isdigit())
+    main_yn = (request.form.get('main_yn') or '').strip().upper()
+    data['main_yn'] = main_yn if main_yn in ('Y', 'N') else 'Y'
+
+    if not data['receiver']:
+        return data, '전화번호를 입력해 주세요.'
+    if not data['group_id']:
+        return data, '그룹을 입력해 주세요.'
+    for col, max_len in PHONE_MAX_LEN.items():
+        if len(data[col]) > max_len:
+            return data, f'{PHONE_LABEL[col]}: {max_len}자 이하로 입력해 주세요.'
+
+    # 빈 값은 NULL 로 저장 (pass_flag 는 테이블 기본값 '패스')
+    for col in ('company', 'custom_no', 'notes'):
+        data[col] = data[col] or None
+    data['pass_flag'] = data['pass_flag'] or '패스'
+    return data, None
+
+
+def _redirectPhone():
+    """처리 후 같은 검색 조건으로 목록 복귀"""
+    return redirect(url_for('textCatch.phoneList',
+                            keyword=request.form.get('keyword', ''),
+                            company=request.form.get('company_filter', '')))
+
+
+@main_bp.route('/textcatch/phone', methods=['GET'])
+def phoneList():
+    """수신 번호 목록 화면"""
+    keyword = (request.args.get('keyword') or '').strip()
+    company = (request.args.get('company') or '').strip()
+    phones = getPhoneList(keyword, company)
+    companies, pass_flags, next_group = getPhoneCodeList()
+    return render_template('textcatch/textcatch_phone.html', phones=phones, keyword=keyword, company=company,
+                           companies=companies, pass_flags=pass_flags, next_group=next_group)
+
+
+@main_bp.route('/textcatch/phone/add', methods=['POST'])
+def phoneAdd():
+    """수신 번호 등록"""
+    data, error = _readPhoneForm()
+    if error:
+        flash(error, 'error')
+    elif addPhone(data):
+        flash(f"'{data['receiver']}' 번호를 등록했습니다.", 'info')
+    else:
+        flash(f"'{data['receiver']}' 는 이미 등록된 번호입니다.", 'error')
+    return _redirectPhone()
+
+
+@main_bp.route('/textcatch/phone/update', methods=['POST'])
+def phoneUpdate():
+    """수신 번호 수정"""
+    org_receiver = (request.form.get('org_receiver') or '').strip()
+    data, error = _readPhoneForm()
+    if not org_receiver:
+        flash('수정할 번호를 찾을 수 없습니다.', 'error')
+    elif error:
+        flash(error, 'error')
+    else:
+        result = updatePhone(org_receiver, data)
+        if result == 'ok':
+            flash(f"'{data['receiver']}' 번호를 수정했습니다.", 'info')
+        elif result == 'dup':
+            flash(f"'{data['receiver']}' 는 이미 등록된 번호입니다.", 'error')
+        else:
+            flash(f"'{org_receiver}' 번호를 찾을 수 없습니다.", 'error')
+    return _redirectPhone()
+
+
+@main_bp.route('/textcatch/phone/delete', methods=['POST'])
+def phoneDelete():
+    """수신 번호 삭제 (단건/선택 다건)"""
+    receivers = [r.strip() for r in request.form.getlist('receivers') if r.strip()]
+    if not receivers:
+        flash('삭제할 번호를 선택해 주세요.', 'error')
+    else:
+        deleted = deletePhone(receivers)
+        flash(f'{deleted}건을 삭제했습니다.', 'info')
+    return _redirectPhone()

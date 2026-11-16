@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .container { max-width: 1300px; }
+    .page-title { color: #c0392b; }
+    .page-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+
+    .phone-add, .search-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-end;
+        margin-bottom: 12px;
+    }
+    .phone-add {
+        padding: 12px;
+        background: #fafafa;
+        border: 1px solid #eee;
+        border-radius: 6px;
+    }
+    /* 공통 style.css 의 .add-form 규칙(input flex 280px)을 피하려고 별도 클래스 사용 */
+    .phone-add .field { display: flex; flex-direction: column; gap: 4px; flex: none; }
+    .phone-add .field input, .phone-add .field select { flex: none; }
+    .phone-add label { font-size: 12px; color: #888; }
+    .phone-add .f-group  input { width: 80px; }
+    .phone-add .f-phone  input { width: 150px; }
+    .phone-add .f-company input, .phone-add .f-custom input, .phone-add .f-pass input { width: 110px; }
+    .phone-add .f-notes { flex: 1 1 160px; }
+    .phone-add .f-notes input { width: 100%; }
+    .search-form input[type=text] { flex: 1; min-width: 180px; }
+
+    .btn-add, .btn-search, .btn-save, .btn-del, .btn-del-sel {
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        padding: 8px 14px;
+        font-size: 14px;
+    }
+    .btn-add { background: #e74c3c; font-weight: bold; padding: 10px 18px; }
+    .btn-add:hover { background: #c0392b; }
+    .btn-search { background: #7f8c8d; }
+    .btn-search:hover { background: #626d6e; }
+    .btn-save { background: #3498db; }
+    .btn-save:hover { background: #2874a6; }
+    .btn-del, .btn-del-sel { background: #e74c3c; }
+    .btn-del:hover, .btn-del-sel:hover { background: #c0392b; }
+
+    .list-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #666;
+    }
+    .phone-table input[type=text], .phone-table select { width: 100%; min-width: 0; }
+    .phone-table .in-group { text-align: center; }
+    .phone-table .in-phone { font-family: monospace; }
+    /* 같은 그룹(본회선+듀얼)끼리 배경을 번갈아 표시 */
+    .phone-table tr.grp-alt td { background: #f6f9fc; }
+    .phone-table tr.is-main .in-phone { font-weight: bold; }
+    .pass-ng { color: #e74c3c; }
+    .created { font-size: 12px; color: #888; }
+
+    @media (max-width: 700px) {
+        .phone-add .field { flex: 1 1 calc(50% - 4px); min-width: 0; }
+        .phone-add .field input, .phone-add .field select { width: 100%; }
+        .btn-add { flex: 1 1 100%; padding: 12px; }
+        .phone-table tr.grp-alt { background: #f6f9fc; }
+    }
+</style>
+
+<div class="container py-4">
+    <h2 class="page-title">📱 수신 번호 관리</h2>
+    <p class="page-desc">텍스트 캐치 수신번호 목록입니다. 같은 그룹의 번호는 본회선(Y)과 듀얼(N)로 묶여 수신 메시지 조회 화면에 함께 표시됩니다. 전화번호는 숫자만 저장됩니다.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="message-box {{ 'is-error' if category == 'error' else '' }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {# 입력 보조 목록 (기존 값에서 선택하거나 직접 입력) #}
+    <datalist id="dl-company">{% for c in companies %}<option value="{{ c }}">{% endfor %}</datalist>
+    <datalist id="dl-pass">{% for p in pass_flags %}<option value="{{ p }}">{% endfor %}</datalist>
+
+    <!-- 등록 -->
+    <form class="phone-add" method="POST" action="{{ url_for('textCatch.phoneAdd') }}">
+        <input type="hidden" name="keyword" value="{{ keyword }}">
+        <input type="hidden" name="company_filter" value="{{ company }}">
+        <div class="field f-group">
+            <label for="add-group">그룹</label>
+            <input type="text" id="add-group" name="group_id" value="{{ next_group }}" maxlength="32" required>
+        </div>
+        <div class="field f-phone">
+            <label for="add-phone">전화번호</label>
+            <input type="text" id="add-phone" name="receiver" placeholder="01012345678" maxlength="32" inputmode="tel" required>
+        </div>
+        <div class="field">
+            <label for="add-main">구분</label>
+            <select id="add-main" name="main_yn">
+                <option value="Y" selected>본회선(Y)</option>
+                <option value="N">듀얼(N)</option>
+            </select>
+        </div>
+        <div class="field f-company">
+            <label for="add-company">통신사</label>
+            <input type="text" id="add-company" name="company" list="dl-company" maxlength="32">
+        </div>
+        <div class="field f-custom">
+            <label for="add-custom">사설번호</label>
+            <input type="text" id="add-custom" name="custom_no" maxlength="64">
+        </div>
+        <div class="field f-pass">
+            <label for="add-pass">패스</label>
+            <input type="text" id="add-pass" name="pass_flag" value="패스" list="dl-pass" maxlength="32">
+        </div>
+        <div class="field f-notes">
+            <label for="add-notes">메모</label>
+            <input type="text" id="add-notes" name="notes" maxlength="256">
+        </div>
+        <button type="submit" class="btn-add">등록</button>
+    </form>
+
+    <!-- 검색 -->
+    <form class="search-form" method="GET" action="{{ url_for('textCatch.phoneList') }}">
+        <input type="text" name="keyword" value="{{ keyword }}" placeholder="전화번호 / 그룹 / 사설번호 / 메모 검색">
+        <select name="company" onchange="this.form.submit();">
+            <option value="">통신사 전체</option>
+            {% for c in companies %}
+            <option value="{{ c }}" {{ 'selected' if c == company else '' }}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-search">검색</button>
+        {% if keyword or company %}<a href="{{ url_for('textCatch.phoneList') }}">초기화</a>{% endif %}
+    </form>
+
+    <!-- 선택 삭제용 폼 (체크박스는 form 속성으로 연결) -->
+    <form id="deleteForm" method="POST" action="{{ url_for('textCatch.phoneDelete') }}"
+          onsubmit="return confirmDelete();">
+        <input type="hidden" name="keyword" value="{{ keyword }}">
+        <input type="hidden" name="company_filter" value="{{ company }}">
+    </form>
+
+    <div class="list-toolbar">
+        <span>총 {{ phones|length }}건</span>
+        <button type="submit" form="deleteForm" class="btn-del-sel">선택 삭제</button>
+    </div>
+
+    <table class="phone-table table-cards">
+        <thead>
+            <tr>
+                <th style="width:40px;"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                <th style="width:70px;">그룹</th>
+                <th style="width:150px;">전화번호</th>
+                <th style="width:110px;">구분</th>
+                <th style="width:110px;">통신사</th>
+                <th style="width:100px;">사설번호</th>
+                <th style="width:100px;">패스</th>
+                <th>메모</th>
+                <th style="width:100px;">등록일</th>
+                <th style="width:140px;">관리</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if phones %}
+                {% set ns = namespace(prev=None, alt=False) %}
+                {% for row in phones %}
+                {% if row.group_id != ns.prev %}{% set ns.alt = not ns.alt %}{% set ns.prev = row.group_id %}{% endif %}
+                {% set fid = 'upd-' ~ loop.index %}
+                <tr class="{{ 'grp-alt' if ns.alt else '' }} {{ 'is-main' if row.main_yn == 'Y' else '' }}">
+                    <td data-label="선택">
+                        <input type="checkbox" name="receivers" value="{{ row.receiver }}" form="deleteForm" class="chk-row">
+                    </td>
+                    <td data-label="그룹">
+                        <input type="text" name="group_id" value="{{ row.group_id }}" maxlength="32" required class="in-group" form="{{ fid }}">
+                    </td>
+                    <td data-label="전화번호">
+                        <input type="text" name="receiver" value="{{ row.receiver }}" maxlength="32" required class="in-phone" inputmode="tel" form="{{ fid }}">
+                    </td>
+                    <td data-label="구분">
+                        <select name="main_yn" form="{{ fid }}">
+                            <option value="Y" {{ 'selected' if row.main_yn == 'Y' else '' }}>본회선</option>
+                            <option value="N" {{ 'selected' if row.main_yn != 'Y' else '' }}>듀얼</option>
+                        </select>
+                    </td>
+                    <td data-label="통신사">
+                        <input type="text" name="company" value="{{ row.company or '' }}" list="dl-company" maxlength="32" form="{{ fid }}">
+                    </td>
+                    <td data-label="사설번호">
+                        <input type="text" name="custom_no" value="{{ row.custom_no or '' }}" maxlength="64" form="{{ fid }}">
+                    </td>
+                    <td data-label="패스">
+                        <input type="text" name="pass_flag" value="{{ row.pass_flag or '' }}" list="dl-pass" maxlength="32"
+                               class="{{ '' if (row.pass_flag or '패스') == '패스' else 'pass-ng' }}" form="{{ fid }}">
+                    </td>
+                    <td class="text-left" data-label="메모">
+                        <input type="text" name="notes" value="{{ row.notes or '' }}" maxlength="256" form="{{ fid }}">
+                    </td>
+                    <td data-label="등록일" class="created">{{ row.created_dt.strftime('%y.%m.%d') if row.created_dt else '' }}</td>
+                    <td data-label="관리">
+                        <div class="cell-actions">
+                            <form id="{{ fid }}" method="POST" action="{{ url_for('textCatch.phoneUpdate') }}">
+                                <input type="hidden" name="org_receiver" value="{{ row.receiver }}">
+                                <input type="hidden" name="keyword" value="{{ keyword }}">
+                                <input type="hidden" name="company_filter" value="{{ company }}">
+                                <button type="submit" class="btn-save">수정</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('textCatch.phoneDelete') }}"
+                                  onsubmit="return confirm('\'' + this.receivers.value + '\' 번호를 삭제할까요?');">
+                                <input type="hidden" name="receivers" value="{{ row.receiver }}">
+                                <input type="hidden" name="keyword" value="{{ keyword }}">
+                                <input type="hidden" name="company_filter" value="{{ company }}">
+                                <button type="submit" class="btn-del">삭제</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="10">등록된 번호가 없습니다.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function toggleAll(src) {
+        document.querySelectorAll('.chk-row').forEach(function (c) { c.checked = src.checked; });
+    }
+    function confirmDelete() {
+        var cnt = document.querySelectorAll('.chk-row:checked').length;
+        if (cnt === 0) { alert('삭제할 번호를 선택해 주세요.'); return false; }
+        return confirm(cnt + '건을 삭제할까요?');
+    }
+</script>
+{% endblock %}
