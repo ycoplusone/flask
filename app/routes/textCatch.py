@@ -7,7 +7,7 @@ from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
-from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
+from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, updateTextCatchGiftYn, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
 from app.logics.textCatch import getGiftWordList, addGiftWord, updateGiftWord, deleteGiftWord
 from app.logics.textCatch import getPhoneList, getPhoneCodeList, addPhone, updatePhone, deletePhone
 
@@ -246,6 +246,21 @@ def textCatchDelete():
                             gift_yn=request.form.get('gift_yn', ''),
                             page_size=request.form.get('page_size', ''),
                             page=request.form.get('page', '')))
+
+
+@main_bp.route('/textcatch/gift_yn', methods=['POST'])
+def textCatchGiftYn():
+    """목록 행에서 대상(gift_yn) 변경 (화면 새로고침 없이 fetch 로 호출, JSON 응답)"""
+    payload = request.get_json(silent=True) or {}
+    msg_id = str(payload.get('id', '')).strip()
+    gift_yn = str(payload.get('gift_yn', '')).strip().upper()
+
+    if not msg_id.isdigit() or gift_yn not in ('A', 'N', 'Y'):
+        return jsonify({'ok': False, 'message': '잘못된 요청입니다.'}), 400
+    row = updateTextCatchGiftYn(int(msg_id), gift_yn)
+    if row is None:
+        return jsonify({'ok': False, 'message': '메시지를 찾을 수 없습니다.'}), 404
+    return jsonify({'ok': True, **row})
 
 
 @main_bp.route('/textcatch/image/<filename>')

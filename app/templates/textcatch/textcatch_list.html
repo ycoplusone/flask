@@ -306,6 +306,18 @@
     .gift-y { color: #27ae60; font-weight: bold; }
     .gift-n { color: #e74c3c; font-weight: bold; }
     .gift-a { color: #999; }
+    .gift-select {
+        width: 100%;
+        padding: 4px 2px;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .gift-select option { color: #333; font-weight: normal; }
+    .gift-select.gift-y { border-color: #27ae60; background: #eafaf1; }
+    .gift-select.gift-n { border-color: #e74c3c; background: #fdedec; }
+    .gift-select.is-saving { opacity: 0.5; }
+    .gift-score { font-size: 12px; color: #888; margin-top: 2px; }
     .no-data { padding: 40px; color: #999; }
 
     .btn-delete {
@@ -571,7 +583,13 @@
                     <td data-label="수신 시간">{% if row.received_at %}{{ row.received_at.strftime('%y.%m.%d') }}<br>{{ row.received_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
                     <td data-label="지연시간">{{ row.dely_tm ~ '분' if row.dely_tm is not none else '-' }}</td>
                     <td data-label="대상">
-                        <span class="gift-{{ row.gift_yn|lower }}">{{ row.gift_yn }}<br>({{ row.gift_score }})</span>
+                        {# 바꾸면 바로 저장 (A 로 되돌리면 점수 0 으로 초기화 → 자동 판별 다시 수행) #}
+                        <select class="gift-select gift-{{ row.gift_yn|lower }}" data-id="{{ row.id }}" data-prev="{{ row.gift_yn }}" title="대상 변경 (바로 저장)">
+                            <option value="A" {{ 'selected' if row.gift_yn == 'A' else '' }}>A(미)</option>
+                            <option value="N" {{ 'selected' if row.gift_yn == 'N' else '' }}>N(노)</option>
+                            <option value="Y" {{ 'selected' if row.gift_yn == 'Y' else '' }}>Y(네)</option>
+                        </select>
+                        <div class="gift-score">({{ row.gift_score }})</div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -708,6 +726,40 @@ document.querySelectorAll('.btn-more').forEach(btn => {
 });
 syncMoreButtons();
 window.addEventListener('resize', syncMoreButtons);   // 화면 폭이 바뀌면 4줄 초과 여부도 바뀜
+
+// 대상(gift_yn) 콤보박스: 바꾸면 바로 저장, 실패하면 이전 값으로 되돌림
+document.querySelectorAll('.gift-select').forEach(sel => {
+    sel.addEventListener('change', async () => {
+        const prev = sel.dataset.prev;
+        const value = sel.value;
+        if (value === 'A' && !confirm('A(미확인)로 되돌리면 점수가 0 으로 초기화되고 자동 판별을 다시 합니다. 변경할까요?')) {
+            sel.value = prev;
+            return;
+        }
+        sel.disabled = true;
+        sel.classList.add('is-saving');
+        try {
+            const res = await fetch('/textcatch/gift_yn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: sel.dataset.id, gift_yn: value }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) throw new Error(data.message || ('HTTP ' + res.status));
+            sel.dataset.prev = data.gift_yn;
+            sel.value = data.gift_yn;
+            sel.className = 'gift-select gift-' + data.gift_yn.toLowerCase();
+            sel.nextElementSibling.textContent = `(${data.gift_score})`;
+            showToast(`ID ${sel.dataset.id} 대상 → ${data.gift_yn}`);
+        } catch (err) {
+            sel.value = prev;
+            alert('대상 변경 실패: ' + err.message);
+        } finally {
+            sel.disabled = false;
+            sel.classList.remove('is-saving');
+        }
+    });
+});
 
 document.querySelectorAll('.js-fill').forEach(el => {
     el.addEventListener('click', () => {
