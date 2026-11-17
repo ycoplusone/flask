@@ -7,7 +7,7 @@ from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
-from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, updateTextCatchGiftYn, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
+from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, updateTextCatchGiftYn, updateTextCatchUseYn, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
 from app.logics.textCatch import getGiftWordList, addGiftWord, updateGiftWord, deleteGiftWord
 from app.logics.textCatch import getPhoneList, getPhoneCodeList, addPhone, updatePhone, deletePhone
 
@@ -178,10 +178,10 @@ def TextCatch():
 def textCatchList():
     """수신 메시지 목록 화면 (기본 조회 조건: base_dt = 당일 ~ 내일(D+1))"""
     # 1. 검색 조건 수신 (없으면 기본값 당일 ~ 내일)
-    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn = _getSearchArgs()
 
     # 2. 목록 조회
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn)
 
     # 2-1. 페이징 (page_size: '50' 기본 / 'all' 전체, page: 1부터)
     #      총 건수·이미지 건수는 전체 기준으로 보여주고, 표에는 현재 페이지 건만 출력
@@ -222,12 +222,13 @@ def textCatchList():
         keyword=keyword,
         msg_type=msg_type,
         gift_yn=gift_yn,
+        use_yn=use_yn,
     )
 
 
 @main_bp.route('/textcatch/delete', methods=['POST'])
 def textCatchDelete():
-    """선택한 수신 메시지 삭제 (use_yn 'Y' -> 'N' 변경) 후 같은 조회 조건으로 목록 복귀"""
+    """선택한 수신 메시지 삭제 (use_yn -> 'N' 변경) 후 같은 조회 조건으로 목록 복귀"""
     ids = [int(v) for v in request.form.getlist('ids') if v.strip().isdigit()]
 
     if not ids:
@@ -244,6 +245,7 @@ def textCatchDelete():
                             keyword=request.form.get('keyword', ''),
                             msg_type=request.form.get('msg_type', ''),
                             gift_yn=request.form.get('gift_yn', ''),
+                            use_yn=request.form.get('use_yn') or 'Y',
                             page_size=request.form.get('page_size', ''),
                             page=request.form.get('page', '')))
 
@@ -261,6 +263,21 @@ def textCatchGiftYn():
     if row is None:
         return jsonify({'ok': False, 'message': '메시지를 찾을 수 없습니다.'}), 404
     return jsonify({'ok': True, **row})
+
+
+@main_bp.route('/textcatch/use_yn', methods=['POST'])
+def textCatchUseYn():
+    """목록 행에서 상태(use_yn) 변경 (Y 사용 / N 삭제 / A 확인, fetch 로 호출, JSON 응답)"""
+    payload = request.get_json(silent=True) or {}
+    msg_id = str(payload.get('id', '')).strip()
+    use_yn = str(payload.get('use_yn', '')).strip().upper()
+
+    if not msg_id.isdigit() or use_yn not in ('A', 'N', 'Y'):
+        return jsonify({'ok': False, 'message': '잘못된 요청입니다.'}), 400
+    value = updateTextCatchUseYn(int(msg_id), use_yn)
+    if value is None:
+        return jsonify({'ok': False, 'message': '메시지를 찾을 수 없습니다.'}), 404
+    return jsonify({'ok': True, 'use_yn': value})
 
 
 @main_bp.route('/textcatch/image/<filename>')
@@ -289,20 +306,24 @@ def _getSearchArgs():
     gift_yn = (request.args.get('gift_yn') or '').strip().upper()
     if gift_yn not in ('A', 'N', 'Y'):
         gift_yn = ''
+    # 상태: Y 사용 / N 삭제 / A 확인 중 하나 (전체 없음, 값이 없거나 잘못되면 'Y')
+    use_yn = (request.args.get('use_yn') or '').strip().upper()
+    if use_yn not in ('A', 'N', 'Y'):
+        use_yn = 'Y'
 
     # 시작일이 종료일보다 크면 서로 교환
     if start_dt > end_dt:
         start_dt, end_dt = end_dt, start_dt
 
-    return start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn
+    return start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn
 
 
 @main_bp.route('/textcatch/excel', methods=['GET'])
 def textCatchExcel():
     """현재 조회 조건의 목록을 엑셀(xlsx)로 다운로드 (이미지 제외)"""
-    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn)
     excel_file = makeTextCatchExcel(list_rows)
 
     # 파일명: 조회기간 + 다운로드 시각
@@ -319,9 +340,9 @@ def textCatchExcel():
 @main_bp.route('/textcatch/images', methods=['GET'])
 def textCatchImageZip():
     """현재 조회 조건에 포함된 첨부 이미지를 ZIP으로 한번에 다운로드"""
-    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn = _getSearchArgs()
+    start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn = _getSearchArgs()
 
-    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn)
+    list_rows = getTextCatchList(start_dt, end_dt, sender, receiver, keyword, msg_type, gift_yn, use_yn)
     zip_file, file_count = makeTextCatchImageZip(list_rows, UPLOAD_FOLDER)
 
     # 받을 이미지가 없으면 빈 ZIP을 주지 않고 목록으로 돌려보냄
@@ -330,7 +351,7 @@ def textCatchImageZip():
         return redirect(url_for('textCatch.textCatchList',
                                 start_dt=start_dt, end_dt=end_dt,
                                 sender=sender, receiver=receiver, keyword=keyword,
-                                msg_type=msg_type, gift_yn=gift_yn))
+                                msg_type=msg_type, gift_yn=gift_yn, use_yn=use_yn))
 
     download_name = f"수신이미지_{start_dt}_{end_dt}_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
 

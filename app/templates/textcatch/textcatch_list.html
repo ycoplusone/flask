@@ -74,7 +74,7 @@
     }
     .input-clear { position: relative; }
     .search-form .js-shrink input[type="date"] { width: 100%; }   /* 축소된 field 폭을 따라가도록 */
-    /* 조회 조건 입력칸 폭 축소: 시작일/종료일 5px, 발신번호/수신번호/메시지 내용 20% (데스크톱만, 하단 script / 모바일은 50% 배치 유지) */
+    /* 조회 조건 입력칸 폭 축소: 시작일/종료일 15px, 발신번호/수신번호/메시지 내용 기본 폭의 56% (데스크톱만, 하단 script / 모바일은 50% 배치 유지) */
     .input-clear input { width: 100%; padding-right: 30px; }
     .input-clear .btn-clear {
         position: absolute;
@@ -343,6 +343,23 @@
     .gift-select.gift-n { border-color: #e74c3c; background: #fdedec; }
     .gift-select.is-saving { opacity: 0.5; }
     .gift-score { font-size: 12px; color: #888; margin-top: 2px; }
+    .dely-tm { font-size: 12px; color: #888; }
+    .dely-tm.is-late { color: #e67e22; font-weight: bold; }   /* 지연이 있으면 강조 */
+    .use-select {
+        width: 100%;
+        padding: 4px 2px;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .use-select option { color: #333; font-weight: normal; }
+    .use-select.use-y { color: #2c7be5; }
+    .use-select.use-n { color: #999; background: #f2f2f2; }
+    .use-select.use-a { color: #e67e22; border-color: #e67e22; background: #fef5e7; }
+    .use-select.is-saving { opacity: 0.5; }
+    /* 삭제(N) 상태 행은 흐리게 */
+    .msg-table tr.is-deleted td { color: #aaa; }
+    .msg-table tr.is-deleted .thumb { opacity: 0.4; }
     .no-data { padding: 40px; color: #999; }
 
     .btn-delete {
@@ -444,11 +461,11 @@
     {% endwith %}
 
     <form id="search-form" class="search-form" method="GET" action="/textcatch">
-        <div class="field js-shrink" data-shrink-px="5">
+        <div class="field js-shrink" data-shrink-px="15">
             <label for="start_dt">시작일 (base_dt)</label>
             <input type="date" id="start_dt" name="start_dt" value="{{ start_dt_view }}">
         </div>
-        <div class="field js-shrink" data-shrink-px="5">
+        <div class="field js-shrink" data-shrink-px="15">
             <label for="end_dt">종료일 (base_dt)</label>
             <input type="date" id="end_dt" name="end_dt" value="{{ end_dt_view }}">
         </div>
@@ -490,6 +507,14 @@
                 <option value="Y" {{ 'selected' if gift_yn == 'Y' else '' }}>Y(네)</option>
             </select>
         </div>
+        <div class="field">
+            <label for="use_yn">상태</label>
+            <select id="use_yn" name="use_yn">
+                <option value="Y" {{ 'selected' if use_yn == 'Y' else '' }}>Y(사용)</option>
+                <option value="N" {{ 'selected' if use_yn == 'N' else '' }}>N(삭제)</option>
+                <option value="A" {{ 'selected' if use_yn == 'A' else '' }}>A(확인)</option>
+            </select>
+        </div>
         <button type="submit" class="btn-search">조회</button>
     </form>
 
@@ -509,16 +534,17 @@
                 <input type="hidden" name="keyword" value="{{ keyword }}">
                 <input type="hidden" name="msg_type" value="{{ msg_type }}">
                 <input type="hidden" name="gift_yn" value="{{ gift_yn }}">
+                <input type="hidden" name="use_yn" value="{{ use_yn }}">
                 <input type="hidden" name="page_size" value="{{ page_size }}">
                 <input type="hidden" name="page" value="{{ page }}">
                 <button type="submit" class="btn-delete" id="btn-delete" disabled>🗑 선택 삭제</button>
             </form>
             <a class="btn-excel"
-               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}">
+               href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}&use_yn={{ use_yn }}">
                 ⬇ 엑셀
             </a>
             <a class="btn-zip"
-               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}">
+               href="/textcatch/images?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}&use_yn={{ use_yn }}">
                 🗂 이미지
             </a>
             {# 한 화면 최대 건수 (조회 폼과 연결, 바꾸면 바로 1페이지부터 다시 조회) #}
@@ -547,9 +573,9 @@
             <col style="width: 160px;">  {# 수신번호: 번호 옆 URL 버튼 공간 확보 130 -> 160 #}
             <col>
             <col style="width: 110px;">
-            <col style="width: 90px;">  {# 수신 시간 (yy.MM.dd / HH:mm 두 줄) 160 -> 90, 줄어든 폭은 메시지 내용으로 #}
-            <col style="width: 80px;">
+            <col style="width: 90px;">  {# 수신 시간 (yy.MM.dd / HH:mm / (지연분) 세 줄), 지연시간 컬럼은 여기로 합침 #}
             <col style="width: 90px;">
+            <col style="width: 90px;">  {# 상태 #}
         </colgroup>
         <thead>
             <tr>
@@ -561,8 +587,8 @@
                 <th>메시지 내용</th>
                 <th>첨부 이미지</th>
                 <th>수신 시간</th>
-                <th>지연시간</th>
                 <th>대상</th>
+                <th>상태</th>
             </tr>
         </thead>
         <tbody>
@@ -611,8 +637,10 @@
                         {% endif %}
                     </td>
                     {# 수신 시간은 yy.MM.dd / HH:mm 두 줄로 간소화 #}
-                    <td data-label="수신 시간">{% if row.received_at %}{{ row.received_at.strftime('%y.%m.%d') }}<br>{{ row.received_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
-                    <td data-label="지연시간">{{ row.dely_tm ~ '분' if row.dely_tm is not none else '-' }}</td>
+                    {# 수신 시간 아래 줄에 지연시간(수신 → 서버 저장까지 걸린 분) 표시 #}
+                    <td data-label="수신 시간">{% if row.received_at %}{{ row.received_at.strftime('%y.%m.%d') }}<br>{{ row.received_at.strftime('%H:%M') }}{% else %}-{% endif %}
+                        {% if row.dely_tm is not none %}<div class="dely-tm{{ ' is-late' if row.dely_tm > 0 else '' }}">({{ row.dely_tm }}분)</div>{% endif %}
+                    </td>
                     <td data-label="대상">
                         {# 바꾸면 바로 저장 (A 로 되돌리면 점수 0 으로 초기화 → 자동 판별 다시 수행) #}
                         <select class="gift-select gift-{{ row.gift_yn|lower }}" data-id="{{ row.id }}" data-prev="{{ row.gift_yn }}" title="대상 변경 (바로 저장)">
@@ -621,6 +649,14 @@
                             <option value="Y" {{ 'selected' if row.gift_yn == 'Y' else '' }}>Y(네)</option>
                         </select>
                         <div class="gift-score">({{ row.gift_score }})</div>
+                    </td>
+                    <td data-label="상태">
+                        {# 바꾸면 바로 저장 (Y 사용 / N 삭제 / A 확인) #}
+                        <select class="use-select use-{{ row.use_yn|lower }}" data-id="{{ row.id }}" data-prev="{{ row.use_yn }}" title="상태 변경 (바로 저장)">
+                            <option value="Y" {{ 'selected' if row.use_yn == 'Y' else '' }}>Y(사용)</option>
+                            <option value="N" {{ 'selected' if row.use_yn == 'N' else '' }}>N(삭제)</option>
+                            <option value="A" {{ 'selected' if row.use_yn == 'A' else '' }}>A(확인)</option>
+                        </select>
                     </td>
                 </tr>
                 {% endfor %}
@@ -672,7 +708,7 @@
     {# 페이징 (현재 조회 조건을 유지한 채 page 만 변경) #}
     {% if total_pages > 1 %}
     {% macro page_url(p) -%}
-        /textcatch?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}&page_size={{ page_size }}&page={{ p }}
+        /textcatch?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}&use_yn={{ use_yn }}&page_size={{ page_size }}&page={{ p }}
     {%- endmacro %}
     <nav class="pager">
         {% if page > 1 %}
@@ -712,7 +748,7 @@ window.addEventListener('resize', syncNavHeight);
 // 조회 조건 입력칸 폭 축소 (데스크톱만)
 //   data-shrink-px 가 있으면 그만큼(px) 축소, 없으면 SHRINK_RATE 비율로 축소
 (function () {
-    const SHRINK_RATE = 0.8;   // 발신번호/수신번호/메시지 내용: 기본 폭의 80%
+    const SHRINK_RATE = 0.56;  // 발신번호/수신번호/메시지 내용: 기본 폭의 56% (80% 에서 30% 더 축소)
     const desktop = window.matchMedia('(min-width: 701px)');
     const fields = document.querySelectorAll('.search-form .js-shrink');
 
@@ -757,6 +793,38 @@ document.querySelectorAll('.btn-more').forEach(btn => {
 });
 syncMoreButtons();
 window.addEventListener('resize', syncMoreButtons);   // 화면 폭이 바뀌면 4줄 초과 여부도 바뀜
+
+// 상태(use_yn) 콤보박스: 바꾸면 바로 저장, 실패하면 이전 값으로 되돌림
+const USE_LABEL = { Y: '사용', N: '삭제', A: '확인' };
+document.querySelectorAll('.use-select').forEach(sel => {
+    sel.closest('tr').classList.toggle('is-deleted', sel.value === 'N');
+    sel.addEventListener('change', async () => {
+        const prev = sel.dataset.prev;
+        const value = sel.value;
+        sel.disabled = true;
+        sel.classList.add('is-saving');
+        try {
+            const res = await fetch('/textcatch/use_yn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: sel.dataset.id, use_yn: value }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) throw new Error(data.message || ('HTTP ' + res.status));
+            sel.dataset.prev = data.use_yn;
+            sel.value = data.use_yn;
+            sel.className = 'use-select use-' + data.use_yn.toLowerCase();
+            sel.closest('tr').classList.toggle('is-deleted', data.use_yn === 'N');
+            showToast(`ID ${sel.dataset.id} 상태 → ${data.use_yn}(${USE_LABEL[data.use_yn]})`);
+        } catch (err) {
+            sel.value = prev;
+            alert('상태 변경 실패: ' + err.message);
+        } finally {
+            sel.disabled = false;
+            sel.classList.remove('is-saving');
+        }
+    });
+});
 
 // 대상(gift_yn) 콤보박스: 바꾸면 바로 저장, 실패하면 이전 값으로 되돌림
 document.querySelectorAll('.gift-select').forEach(sel => {
