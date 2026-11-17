@@ -119,7 +119,7 @@ def setAppLog( receiver , retry_count , inflight_count , hold_count , hold_oldes
 
 
 
-def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = '', msg_type: str = '', gift_yn: str = ''):
+def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str = '', keyword: str = '', msg_type: str = '', gift_yn: str = '', use_yn: str = 'Y'):
     """
     수신 메시지(received_messages) 목록 조회.
     start_dt / end_dt : 조회 기준일(base_dt, varchar(8) YYYYMMDD) 범위
@@ -128,6 +128,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
     keyword           : 메시지 내용 부분검색 (선택)
     msg_type          : 'MMS' 이미지 첨부 건 / 'SMS' 이미지 없는 건 / '' 전체 (선택)
     gift_yn           : 기프티콘여부 'A' 미확인 / 'N' 아님 / 'Y' 대상 / '' 전체 (선택)
+    use_yn            : 상태 'Y' 사용 / 'N' 삭제 / 'A' 확인 / '' 전체 (기본 'Y')
     """
     sql = """
         SELECT a.id
@@ -144,6 +145,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
              , COALESCE(a.gift_score, 0) AS gift_score
              , REGEXP_SUBSTR(a.message_body, 'https?://[^ \t\r\n"''<>()]+') AS extracted_url
              , b.phone_numbers
+             , COALESCE(a.use_yn, 'Y') AS use_yn
         FROM received_messages a
         left outer join (  -- 본회선/듀얼 전번호 출력
 	        select substr( trim(z.receiver) ,-8) receiver , z.main_yn 
@@ -151,7 +153,6 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
 	        from received_phone_list z
         ) b on ( substr(trim(a.receiver),-8) = b.receiver )
         WHERE a.base_dt BETWEEN :start_dt AND :end_dt
-        AND a.use_yn = 'Y'
         AND COALESCE(a.SENDER, '') != ''
     """
     params = {'start_dt': start_dt, 'end_dt': end_dt}
@@ -178,6 +179,10 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
         sql += " AND COALESCE(a.gift_yn, 'A') = :gift_yn "
         params['gift_yn'] = gift_yn
 
+    if use_yn in ('A', 'N', 'Y'):
+        sql += " AND COALESCE(a.use_yn, 'Y') = :use_yn "
+        params['use_yn'] = use_yn
+
     sql += " ORDER BY id DESC  "
 
     result = db.session.execute(text(sql), params)
@@ -186,7 +191,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
 
 def deleteTextCatch(ids: list) -> int:
     """
-    수신 메시지 삭제 처리. 실제 DELETE 가 아니라 use_yn 을 'Y' -> 'N' 으로 변경한다.
+    수신 메시지 삭제 처리. 실제 DELETE 가 아니라 use_yn 을 'N' 으로 변경한다. (사용 Y / 확인 A 건 대상)
     ids : 삭제할 received_messages.id 목록
     반환 : 변경된 건수
     """
@@ -197,7 +202,7 @@ def deleteTextCatch(ids: list) -> int:
         UPDATE received_messages
         SET use_yn = 'N'
         WHERE id IN :ids
-          AND use_yn = 'Y'
+          AND COALESCE(use_yn, 'Y') != 'N'
     """).bindparams(bindparam('ids', expanding=True))
 
     result = db.session.execute(sql, {'ids': ids})
@@ -217,16 +222,32 @@ def updateTextCatchGiftYn(msg_id: int, gift_yn: str):
         SET gift_yn    = :gift_yn
           , gift_score = IF(:gift_yn = 'A', 0, gift_score)
         WHERE id = :id
-          AND use_yn = 'Y'
     """)
     db.session.execute(sql, {'gift_yn': gift_yn, 'id': msg_id})
     db.session.commit()
     row = db.session.execute(text("""
         SELECT COALESCE(gift_yn, 'A') AS gift_yn, COALESCE(gift_score, 0) AS gift_score
         FROM received_messages
-        WHERE id = :id AND use_yn = 'Y'
+        WHERE id = :id
     """), {'id': msg_id}).mappings().first()
     return dict(row) if row else None
+
+
+def updateTextCatchUseYn(msg_id: int, use_yn: str):
+    """
+    수신 메시지 상태(use_yn) 변경.
+    use_yn : 'Y' 사용 / 'N' 삭제 / 'A' 확인
+    반환 : 변경 후 use_yn / 대상 없으면 None
+    """
+    db.session.execute(
+        text("UPDATE received_messages SET use_yn = :use_yn WHERE id = :id"),
+        {'use_yn': use_yn, 'id': msg_id},
+    )
+    db.session.commit()
+    return db.session.execute(
+        text("SELECT COALESCE(use_yn, 'Y') FROM received_messages WHERE id = :id"),
+        {'id': msg_id},
+    ).scalar()
 
 
 def makeTextCatchExcel(list_rows: list):
@@ -239,7 +260,7 @@ def makeTextCatchExcel(list_rows: list):
     ws = wb.active
     ws.title = '수신메시지'
 
-    headers = ['ID', '구분', '발신번호', '수신번호', '메시지 내용', '수신 시간', '기준일', 'gift_yn(대상)']
+    headers = ['ID', '구분', '발신번호', '수신번호', '메시지 내용', '수신 시간', '기준일', 'gift_yn(대상)', 'use_yn(상태)']
     ws.append(headers)
 
     # 헤더 스타일
@@ -252,7 +273,7 @@ def makeTextCatchExcel(list_rows: list):
         cell.border = Border(*[Side(style='thin', color='DDDDDD')] * 4)
 
     # 컬럼 너비
-    for col, width in zip('ABCDEFGH', [8, 8, 16, 18, 60, 20, 12, 14]):
+    for col, width in zip('ABCDEFGHI', [8, 8, 16, 18, 60, 20, 12, 14, 14]):
         ws.column_dimensions[col].width = width
 
     ws.freeze_panes = 'A2'
@@ -268,6 +289,7 @@ def makeTextCatchExcel(list_rows: list):
         ws.cell(row=idx, column=6, value=str(row.get('received_at') or ''))
         ws.cell(row=idx, column=7, value=row.get('base_dt'))
         ws.cell(row=idx, column=8, value=row.get('gift_yn'))
+        ws.cell(row=idx, column=9, value=row.get('use_yn'))
 
         for col_idx in range(1, len(headers) + 1):
             cell = ws.cell(row=idx, column=col_idx)
