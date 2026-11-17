@@ -4,6 +4,31 @@
 <style>
     .container { max-width: 1200px; }
     .page-title { color: #c0392b; }
+    /* 제목 옆 알록달록 문구 */
+    .love-msg {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 8px;
+        margin-left: 10px;
+        font-size: 0.6em;
+        font-weight: bold;
+        vertical-align: middle;
+    }
+    .love-msg span {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        background-size: 200% auto;
+        animation: love-flow 3s linear infinite;
+    }
+    .love-1 { background-image: linear-gradient(90deg, #ff6b6b, #feca57, #ff6b6b); }
+    .love-2 { background-image: linear-gradient(90deg, #48dbfb, #a29bfe, #48dbfb); }
+    .love-3 { background-image: linear-gradient(90deg, #ff9ff3, #1dd1a1, #ff9ff3); }
+    @keyframes love-flow { to { background-position: 200% center; } }
+    @media (max-width: 700px) {
+        .love-msg { display: flex; margin: 4px 0 0; }
+    }
 
     /* 페이징 */
     .pager {
@@ -402,7 +427,13 @@
 </style>
 
 <div class="container py-4">
-    <h2 class="page-title">📩 수신 메시지 조회</h2>
+    <h2 class="page-title">📩 수신 메시지 조회
+        <span class="love-msg">
+            <span class="love-1">사랑해</span>
+            <span class="love-2">많이 사랑해</span>
+            <span class="love-3">진짜 사랑해</span> 💕
+        </span>
+    </h2>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
