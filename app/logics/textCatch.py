@@ -205,6 +205,30 @@ def deleteTextCatch(ids: list) -> int:
     return result.rowcount
 
 
+def updateTextCatchGiftYn(msg_id: int, gift_yn: str):
+    """
+    수신 메시지 대상(gift_yn) 수동 변경.
+    gift_yn : 'Y' 대상 / 'N' 아님 / 'A' 미확인
+              'A' 로 되돌리면 자동 판별(home.py)이 점수를 다시 더하므로 gift_score 를 0 으로 초기화
+    반환 : 변경 후 {'gift_yn', 'gift_score'} / 대상 없으면 None
+    """
+    sql = text("""
+        UPDATE received_messages
+        SET gift_yn    = :gift_yn
+          , gift_score = IF(:gift_yn = 'A', 0, gift_score)
+        WHERE id = :id
+          AND use_yn = 'Y'
+    """)
+    db.session.execute(sql, {'gift_yn': gift_yn, 'id': msg_id})
+    db.session.commit()
+    row = db.session.execute(text("""
+        SELECT COALESCE(gift_yn, 'A') AS gift_yn, COALESCE(gift_score, 0) AS gift_score
+        FROM received_messages
+        WHERE id = :id AND use_yn = 'Y'
+    """), {'id': msg_id}).mappings().first()
+    return dict(row) if row else None
+
+
 def makeTextCatchExcel(list_rows: list):
     """
     수신 메시지 목록을 엑셀(xlsx)로 변환해 BytesIO로 반환.
