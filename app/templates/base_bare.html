@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <link href="{{ url_for('static', filename='bootstrap.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
+    <title>Enfish Site</title>
+</head>
+<body>
+    {# base.html 에서 상단 메뉴(begin.html)/끝(end.html)/차트 스크립트만 뺀 단독 화면용 레이아웃 #}
+    {% block content %}
+    {% endblock %}
+
+    {% block script %}
+    {% endblock %}
+</body>
+</html>
