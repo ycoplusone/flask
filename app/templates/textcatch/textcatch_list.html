@@ -1155,6 +1155,7 @@ function setSelection(rect) {
 
 function saveCapture(rect) {
     const src = capture.canvas;
+    if (!src || capture.saving) return;   // 저장 처리 중 Enter/클릭 연타로 두 번 저장되지 않게
     const x = Math.max(0, Math.round(rect.x)), y = Math.max(0, Math.round(rect.y));
     const w = Math.min(src.width - x, Math.round(rect.w)), h = Math.min(src.height - y, Math.round(rect.h));
     if (w < 2 || h < 2) return;
@@ -1162,7 +1163,9 @@ function saveCapture(rect) {
     out.width = w;
     out.height = h;
     out.getContext('2d').drawImage(src, x, y, w, h, 0, 0, w, h);
+    capture.saving = true;
     out.toBlob(blob => {
+        capture.saving = false;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = capture.filename;
@@ -1208,7 +1211,10 @@ function closeCapture() {
         capture.rect = { x: x * k, y: y * k, w: w * k, h: h * k };
         capture.btnSel.disabled = false;
     });
-    const end = () => { start = null; };
+    const end = () => {
+        start = null;
+        if (capture.rect) capture.btnSel.focus();   // 드래그 후에도 Enter/Space 로 바로 저장
+    };
     capture.wrap.addEventListener('pointerup', end);
     capture.wrap.addEventListener('pointercancel', end);
 })();
@@ -1219,6 +1225,20 @@ document.getElementById('cap-save-all').addEventListener('click', () =>
     saveCapture({ x: 0, y: 0, w: capture.canvas.width, h: capture.canvas.height }));
 document.getElementById('cap-cancel').addEventListener('click', closeCapture);
 document.addEventListener('keydown', e => {
+    // 캡쳐 선택 중 Enter = 선택 영역 저장 (드래그하면 버튼 포커스가 풀리므로 포커스와 상관없이 처리)
+    if (e.key === 'Enter' && !capture.overlay.hidden) {
+        e.preventDefault();   // 포커스된 버튼의 기본 Enter 클릭과 중복 저장 방지
+        if (e.repeat || e.isComposing) return;
+        const f = document.activeElement;
+        if (f && f !== capture.btnSel && f.tagName === 'BUTTON' && capture.overlay.contains(f)) {
+            f.click();   // Tab 으로 다른 버튼(패널/전체/취소)을 고른 경우 그 버튼 실행
+        } else if (capture.rect) {
+            saveCapture(capture.rect);
+        } else {
+            showToast('먼저 드래그로 영역을 선택해 주세요');
+        }
+        return;
+    }
     if (e.key !== 'Escape') return;
     if (!document.getElementById('cap-overlay').hidden) { closeCapture(); return; }   // 캡쳐 선택 중이면 그것만 닫기
     if (!urlPanel.el.hidden) urlPanel.close();
