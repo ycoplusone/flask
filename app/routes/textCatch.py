@@ -7,7 +7,7 @@ from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
-from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, updateTextCatchGiftYn, updateTextCatchUseYn, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
+from app.logics.textCatch import setTextCatch, getTextCatchList, deleteTextCatch, confirmTextCatch, updateTextCatchGiftYn, updateTextCatchUseYn, makeTextCatchExcel, makeTextCatchImageZip , setAppLog
 from app.logics.textCatch import getGiftWordList, addGiftWord, updateGiftWord, deleteGiftWord
 from app.logics.textCatch import getPhoneList, getPhoneCodeList, addPhone, updatePhone, deletePhone
 
@@ -226,17 +226,13 @@ def textCatchList():
     )
 
 
-@main_bp.route('/textcatch/delete', methods=['POST'])
-def textCatchDelete():
-    """선택한 수신 메시지 삭제 (use_yn -> 'N' 변경) 후 같은 조회 조건으로 목록 복귀"""
-    ids = [int(v) for v in request.form.getlist('ids') if v.strip().isdigit()]
+def _readCheckedIds():
+    """목록 화면에서 체크한 메시지 id 목록"""
+    return [int(v) for v in request.form.getlist('ids') if v.strip().isdigit()]
 
-    if not ids:
-        flash('삭제할 메시지를 선택해 주세요.', 'error')
-    else:
-        deleted = deleteTextCatch(ids)
-        flash(f'{deleted}건을 삭제했습니다.', 'info')
 
+def _redirectTextCatchList():
+    """일괄 처리 후 같은 조회 조건으로 목록 복귀"""
     return redirect(url_for('textCatch.textCatchList',
                             start_dt=request.form.get('start_dt', ''),
                             end_dt=request.form.get('end_dt', ''),
@@ -248,6 +244,34 @@ def textCatchDelete():
                             use_yn=request.form.get('use_yn') or 'Y',
                             page_size=request.form.get('page_size', ''),
                             page=request.form.get('page', '')))
+
+
+@main_bp.route('/textcatch/delete', methods=['POST'])
+def textCatchDelete():
+    """선택한 수신 메시지 삭제 (use_yn -> 'N' 변경) 후 같은 조회 조건으로 목록 복귀"""
+    ids = _readCheckedIds()
+
+    if not ids:
+        flash('삭제할 메시지를 선택해 주세요.', 'error')
+    else:
+        deleted = deleteTextCatch(ids)
+        flash(f'{deleted}건을 삭제했습니다.', 'info')
+
+    return _redirectTextCatchList()
+
+
+@main_bp.route('/textcatch/confirm', methods=['POST'])
+def textCatchConfirm():
+    """선택한 수신 메시지 확인 처리 (use_yn -> 'A' 변경) 후 같은 조회 조건으로 목록 복귀"""
+    ids = _readCheckedIds()
+
+    if not ids:
+        flash('확인 처리할 메시지를 선택해 주세요.', 'error')
+    else:
+        updated = confirmTextCatch(ids)
+        flash(f'{updated}건을 확인 처리했습니다.', 'info')
+
+    return _redirectTextCatchList()
 
 
 @main_bp.route('/textcatch/gift_yn', methods=['POST'])

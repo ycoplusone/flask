@@ -210,6 +210,27 @@ def deleteTextCatch(ids: list) -> int:
     return result.rowcount
 
 
+def confirmTextCatch(ids: list) -> int:
+    """
+    수신 메시지 확인 처리. 선택한 건의 use_yn 을 'A'(확인) 로 변경한다.
+    ids : 확인 처리할 received_messages.id 목록
+    반환 : 변경된 건수
+    """
+    if not ids:
+        return 0
+
+    sql = text("""
+        UPDATE received_messages
+        SET use_yn = 'A'
+        WHERE id IN :ids
+          AND COALESCE(use_yn, 'Y') != 'A'
+    """).bindparams(bindparam('ids', expanding=True))
+
+    result = db.session.execute(sql, {'ids': ids})
+    db.session.commit()
+    return result.rowcount
+
+
 def updateTextCatchGiftYn(msg_id: int, gift_yn: str):
     """
     수신 메시지 대상(gift_yn) 수동 변경.

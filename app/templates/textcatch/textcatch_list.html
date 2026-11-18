@@ -373,6 +373,17 @@
     }
     .btn-delete:hover { background: #a93226; }
     .btn-delete:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-confirm {
+        background: #2980b9;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 18px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .btn-confirm:hover { background: #1f6391; }
+    .btn-confirm:disabled { background: #ccc; cursor: not-allowed; }
 
     .msg-table input[type="checkbox"],
     .select-all-label input[type="checkbox"] {
@@ -412,7 +423,7 @@
         .msg-table { table-layout: auto; }
         .msg-table tr.is-selected { background: #fff4f2; border-color: #f1b0a8; }
         .msg-table tr.is-selected td { background: transparent; }
-        .btn-delete { flex: 1 1 0; padding: 10px 8px; }
+        .btn-delete, .btn-confirm { flex: 1 1 0; padding: 10px 8px; }
         .thumb { max-width: 160px; max-height: 160px; }
     }
 
@@ -538,6 +549,7 @@
                 <input type="hidden" name="page_size" value="{{ page_size }}">
                 <input type="hidden" name="page" value="{{ page }}">
                 <button type="submit" class="btn-delete" id="btn-delete" disabled>🗑 선택 삭제</button>
+                <button type="submit" class="btn-confirm" id="btn-confirm" formaction="/textcatch/confirm" disabled>✔ 선택 확인</button>
             </form>
             <a class="btn-excel"
                href="/textcatch/excel?start_dt={{ start_dt }}&end_dt={{ end_dt }}&sender={{ sender|urlencode }}&receiver={{ receiver|urlencode }}&keyword={{ keyword|urlencode }}&msg_type={{ msg_type }}&gift_yn={{ gift_yn }}&use_yn={{ use_yn }}">
@@ -1216,6 +1228,7 @@ document.addEventListener('keydown', e => {
     const rows = Array.from(document.querySelectorAll('.js-check-row'));
     const allBoxes = Array.from(document.querySelectorAll('.js-check-all'));
     const btnDelete = document.getElementById('btn-delete');
+    const btnConfirm = document.getElementById('btn-confirm');
     const form = document.getElementById('delete-form');
 
     function refresh() {
@@ -1227,6 +1240,8 @@ document.addEventListener('keydown', e => {
         });
         btnDelete.disabled = checked === 0;
         btnDelete.textContent = checked ? `🗑 선택 삭제 (${checked})` : '🗑 선택 삭제';
+        btnConfirm.disabled = checked === 0;
+        btnConfirm.textContent = checked ? `✔ 선택 확인 (${checked})` : '✔ 선택 확인';
     }
 
     allBoxes.forEach(cb => cb.addEventListener('change', () => {
@@ -1237,7 +1252,8 @@ document.addEventListener('keydown', e => {
 
     form.addEventListener('submit', (e) => {
         const checked = rows.filter(cb => cb.checked).length;
-        if (!checked || !confirm(`선택한 ${checked}건을 삭제하시겠습니까?`)) {
+        const action = (e.submitter === btnConfirm) ? '확인(A) 처리' : '삭제';
+        if (!checked || !confirm(`선택한 ${checked}건을 ${action}하시겠습니까?`)) {
             e.preventDefault();
         }
     });
