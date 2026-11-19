@@ -163,20 +163,41 @@ def update_received_notes(receiver, notes) -> int:
     return result.rowcount
 
 
+def read_barcode_value(zxingcpp, img) -> str:
+    """
+    이미지(그레이스케일 numpy 배열)에서 1차원 바코드 값을 읽어 반환. 못 읽으면 ''.
+    - 기프티콘은 대부분 Code128 (예: 900676162205), 상품 바코드는 EAN/UPC
+    - 4자리 미만 값은 오인식으로 보고 제외, 여러 개면 중복 없이 ',' 로 연결 (컬럼 길이 64)
+    """
+    results = zxingcpp.read_barcodes(img, formats=zxingcpp.BarcodeFormat.LinearCodes)
+    values = []
+    for r in results:
+        v = (r.text or '').strip()
+        if len(v) >= 4 and v not in values:
+            values.append(v)
+    return ','.join(values)[:64]
+
+
 def update_gift_score() -> int:
     """
     최근 7일 수신 메시지의 기프티콘 점수(gift_score)를 계산해 더한다.
       대상 : received_messages 중 use_yn = 'Y' AND gift_yn = 'A' (미확인)
       1) message_body 에 received_gift_word.word(use_yn = 'Y') 가 포함되면 그 단어의 score 만큼 더함 (음수면 감점)
-      2) image_filename 이 있고 이미지에서 바코드가 검출되면 +500
+      2) image_filename 이 있고 이미지에서 바코드가 검출되면 +500, 바코드 값을 읽으면 barcode 컬럼에 저장
       3) 더한 뒤 gift_score 가 2 이상이면 gift_yn = 'Y', 아니면 'N' (처리 완료 → 다음 실행 대상에서 제외)
     반환 : 처리(gift_yn 변경)된 건수
 
     필요 라이브러리 : opencv-python-headless (cv2.barcode.BarcodeDetector, OpenCV 4.8 이상)
+                      zxing-cpp (바코드 값 읽기. OpenCV 는 EAN/UPC 만 읽어 기프티콘(Code128) 값을 못 읽음)
     """
     import os
     # OpenCV 미설치 환경에서도 앱 기동(다른 화면)은 되도록 함수 안에서 import
     import cv2
+    try:
+        import zxingcpp   # 미설치면 값 읽기만 건너뛰고 점수 계산은 그대로 진행
+    except ImportError:
+        zxingcpp = None
+        print("[update_gift_score] zxing-cpp 미설치: 바코드 값 저장 생략 (pip install zxing-cpp)")
 
     # 수신 이미지 폴더 (routes/textCatch.py 의 UPLOAD_FOLDER 와 동일한 규칙)
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # /home/dlive/flask
@@ -212,6 +233,7 @@ def update_gift_score() -> int:
     detector.setDownsamplingThreshold(192)
     detector.setDetectorScales([0.03, 0.06, 0.08, 0.12])
     updates = []     # 이번에 점수가 변한 건  : [{'id', 'score'}] (음수 포함)
+    barcodes = []    # 바코드 값을 읽은 건   : [{'id', 'barcode'}]
     zero_ids = []    # 이번에 점수가 0 인 건 : 점수 변화 없이 gift_yn 만 판단
 
     for row in msg_rows:
@@ -233,6 +255,11 @@ def update_gift_score() -> int:
                         found, _points = detector.detect(img)
                         if found:
                             score += 500
+                            # 바코드 값 읽기: OpenCV 가 위치를 잡은 이미지만 읽음
+                            # (zxing 단독으로 읽으면 줄무늬 그림을 '54' 같은 엉뚱한 값으로 읽는 경우가 있음)
+                            barcode = read_barcode_value(zxingcpp, img) if zxingcpp else ''
+                            if barcode:
+                                barcodes.append({'id': row['id'], 'barcode': barcode})
                 except Exception as e:
                     print(f"[update_gift_score] 바코드 검출 실패 id={row['id']} file={image_filename}: {e}")
 
@@ -263,7 +290,15 @@ def update_gift_score() -> int:
               AND gift_yn = 'A'
         """).bindparams(bindparam('ids', expanding=True)), {'ids': zero_ids[i:i + 1000]})
 
-    if updates or zero_ids:
+    # 3-2. 읽은 바코드 값 저장
+    if barcodes:
+        db.session.execute(text("""
+            UPDATE received_messages
+            SET barcode = :barcode
+            WHERE id = :id
+        """), barcodes)
+
+    if updates or zero_ids or barcodes:
         db.session.commit()
 
     return len(updates) + len(zero_ids)

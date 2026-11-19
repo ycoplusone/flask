@@ -2,6 +2,7 @@ import os
 import base64
 import mimetypes
 import hashlib
+import uuid
 from flask import Blueprint, json, render_template,Flask, request, jsonify, send_from_directory, send_file, abort, flash, redirect, url_for
 from app.logics.home import get_remaining_collection_count, get_last7_job_counts
 from werkzeug.utils import secure_filename
@@ -29,6 +30,21 @@ VERSION_FILENAME = 'version.json'
 os.makedirs(APK_FOLDER, exist_ok=True)
 
 @main_bp.route('/api/sms-receiver', methods=['POST'])
+def makeImageFilename(received_time: str, sender: str, msg_id: str, ext: str) -> str:
+    """
+    MMS 이미지 저장 파일명: {수신시각 yyyyMMddHHmmss}_{발신번호}_{고유값}{확장자}
+      예) 20261119143005_01012345678_a1b2c3d4.jpg
+    - 고유값: 앱이 보낸 msg_id 가 있으면 그 값 → 재전송(attempt 2~)돼도 같은 파일명이라 중복 파일이 생기지 않음
+              msg_id 가 없으면 무작위 8자리(uuid4) → 같은 초·같은 발신번호라도 덮어쓰지 않음
+    - 수신시각은 서버 시각이 아니라 앱이 보낸 timestamp 기준 (재전송 시에도 동일)
+    - secure_filename 으로 경로 문자/특수문자 제거
+    """
+    stamp = received_time.replace('-', '').replace(':', '').replace(' ', '')   # 'YYYY-MM-DD HH:MM:SS' → 'YYYYMMDDHHMMSS'
+    sender_part = secure_filename(str(sender or ''))[:20] or 'unknown'
+    uniq = secure_filename(str(msg_id or ''))[:40] or uuid.uuid4().hex[:8]
+    return secure_filename(f"{stamp}_{sender_part}_{uniq}{ext}")
+
+
 @main_bp.route('/api/textcatch', methods=['POST'])
 def TextCatch():
     # REM SMS 전송 예시
@@ -148,8 +164,7 @@ def TextCatch():
         try:
             image_bytes = base64.b64decode(b64_data)
 
-            # 파일명 중복 방지를 위해 타임스탬프와 발신번호 조합
-            image_filename = secure_filename(f"{int(datetime.now().timestamp())}_{sender}{ext}")
+            image_filename = makeImageFilename(received_time, sender, msg_id, ext)
             image_path = os.path.join(UPLOAD_FOLDER, image_filename)
             with open(image_path, 'wb') as f:
                 f.write(image_bytes)
