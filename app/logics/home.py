@@ -219,7 +219,7 @@ def update_gift_score() -> int:
              -- 과거 데이터에 문자열 'None'이 들어간 건이 있어 빈 값으로 정규화
              , NULLIF(image_filename, 'None') AS image_filename
         FROM received_messages
-        WHERE received_at >= NOW() - INTERVAL 7 DAY
+        WHERE base_dt between DATE_FORMAT(DATE_SUB(now(), INTERVAL 7 DAY), '%Y%m%01') and  DATE_FORMAT(DATE_SUB(now(), INTERVAL 0 DAY), '%Y%m%d')
           AND use_yn = 'Y'
           AND gift_yn = 'A'
     """)).mappings().all()
