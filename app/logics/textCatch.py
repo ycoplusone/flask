@@ -125,7 +125,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
     start_dt / end_dt : 조회 기준일(base_dt, varchar(8) YYYYMMDD) 범위
     sender            : 발신번호 부분검색 (선택)
     receiver          : 수신번호 부분검색 (선택)
-    keyword           : 메시지 내용 부분검색 (선택)
+    keyword           : 메시지 내용 또는 바코드 부분검색 (선택)
     msg_type          : 'MMS' 이미지 첨부 건 / 'SMS' 이미지 없는 건 / '' 전체 (선택)
     gift_yn           : 기프티콘여부 'A' 미확인 / 'N' 아님 / 'Y' 대상 / '' 전체 (선택)
     use_yn            : 상태 'Y' 사용 / 'N' 삭제 / 'A' 확인 / '' 전체 (기본 'Y')
@@ -146,6 +146,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
              , REGEXP_SUBSTR(a.message_body, 'https?://[^ \t\r\n"''<>()]+') AS extracted_url
              , b.phone_numbers
              , COALESCE(a.use_yn, 'Y') AS use_yn
+             , a.barcode
         FROM received_messages a
         left outer join (  -- 본회선/듀얼 전번호 출력
 	        select substr( trim(z.receiver) ,-8) receiver , z.main_yn 
@@ -166,7 +167,7 @@ def getTextCatchList(start_dt: str, end_dt: str, sender: str = '', receiver: str
         params['receiver'] = f"%{receiver}%"
 
     if keyword:
-        sql += " AND a.message_body LIKE :keyword "
+        sql += " AND (a.message_body LIKE :keyword OR a.barcode LIKE :keyword) "
         params['keyword'] = f"%{keyword}%"
 
     # image_filename에 문자열 'None'이 들어간 과거 데이터도 SMS로 취급

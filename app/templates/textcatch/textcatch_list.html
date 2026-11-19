@@ -344,8 +344,7 @@
         pointer-events: none;
     }
     .cap-sel[hidden] { display: none; }
-    .type-mms { color: #e67e22; font-weight: bold; }
-    .type-sms { color: #3498db; font-weight: bold; }
+    .msg-table td.barcode { font-family: monospace; font-size: 13px; word-break: break-all; }
     .gift-y { color: #27ae60; font-weight: bold; }
     .gift-n { color: #e74c3c; font-weight: bold; }
     .gift-a { color: #999; }
@@ -515,7 +514,7 @@
         <div class="field js-shrink">
             <label for="keyword">메시지 내용</label>
             <div class="input-clear">
-                <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="검색할 단어">
+                <input type="text" id="keyword" name="keyword" value="{{ keyword }}" placeholder="메시지 내용 / 바코드">
                 <button type="button" class="btn-clear" aria-label="지우기" tabindex="-1">&times;</button>
             </div>
         </div>
@@ -598,11 +597,11 @@
         <colgroup>
             <col style="width: 44px;">
             <col style="width: 70px;">
-            <col style="width: 80px;">
             <col style="width: 130px;">
             <col style="width: 160px;">  {# 수신번호: 번호 옆 URL 버튼 공간 확보 130 -> 160 #}
             <col>
             <col style="width: 110px;">
+            <col style="width: 140px;">  {# 바코드 (기프티콘 Code128 12~16자리) #}
             <col style="width: 90px;">  {# 수신 시간 (yy.MM.dd / HH:mm / (지연분) 세 줄), 지연시간 컬럼은 여기로 합침 #}
             <col style="width: 90px;">
             <col style="width: 90px;">  {# 상태 #}
@@ -611,11 +610,11 @@
             <tr>
                 <th><input type="checkbox" class="js-check-all" title="전체 선택"></th>
                 <th>ID</th>
-                <th>구분</th>
                 <th>발신번호</th>
                 <th>수신번호</th>
                 <th>메시지 내용</th>
                 <th>첨부 이미지</th>
+                <th>바코드</th>
                 <th>수신 시간</th>
                 <th>대상</th>
                 <th>상태</th>
@@ -629,13 +628,6 @@
                         <input type="checkbox" name="ids" value="{{ row.id }}" form="delete-form" class="js-check-row">
                     </td>
                     <td data-label="ID">{{ row.id }}</td>
-                    <td data-label="구분">
-                        {% if row.image_filename %}
-                            <span class="type-mms">MMS</span>
-                        {% else %}
-                            <span class="type-sms">SMS</span>
-                        {% endif %}
-                    </td>
                     <td data-label="발신번호">
                         {% if row.sender %}<span class="js-fill" data-target="sender" data-value="{{ row.sender }}" title="조회 조건에 입력">{{ row.sender }}</span>{% endif %}
                     </td>
@@ -670,6 +662,9 @@
                     </td>
                     {# 수신 시간은 yy.MM.dd / HH:mm 두 줄로 간소화 #}
                     {# 수신 시간 아래 줄에 지연시간(수신 → 서버 저장까지 걸린 분) 표시 #}
+                    <td data-label="바코드" class="barcode">
+                        {% for code in (row.barcode or '').split(',') if code %}<div>{{ code }}</div>{% else %}-{% endfor %}
+                    </td>
                     <td data-label="수신 시간">{% if row.received_at %}{{ row.received_at.strftime('%y.%m.%d') }}<br>{{ row.received_at.strftime('%H:%M') }}{% else %}-{% endif %}
                         {% if row.dely_tm is not none %}<div class="dely-tm{{ ' is-late' if row.dely_tm > 0 else '' }}">({{ row.dely_tm }}분)</div>{% endif %}
                     </td>
