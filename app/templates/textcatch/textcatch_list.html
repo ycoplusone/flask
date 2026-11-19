@@ -641,7 +641,9 @@
                     </td>
                     <td data-label="첨부 이미지">
                         {% if row.image_filename %}
-                            <a href="/textcatch/image/{{ row.image_filename }}" target="_blank">
+                            {# 클릭 시 오른쪽 패널에 표시 (Ctrl/휠 클릭은 기존처럼 새 탭) #}
+                            <a href="/textcatch/image/{{ row.image_filename }}" target="_blank" class="js-open-img"
+                               data-phone="{{ phones[0] if phones else (row.receiver or '') }}" title="오른쪽 패널에서 보기">
                                 <img class="thumb" src="/textcatch/image/{{ row.image_filename }}" alt="{{ row.image_filename }}">
                             </a>
                         {% else %}
@@ -943,6 +945,14 @@ document.querySelectorAll('.js-open-url').forEach(btn => {
         const phone = btn.dataset.phone;
         copyText(phone).then(ok => notifyCopied(ok, phone, btn));
         urlPanel.open(btn.dataset.url, phone);
+    });
+});
+// 첨부 이미지: 새 탭 대신 오른쪽 패널에 표시 (같은 서버 이미지라 iframe 으로 바로 보임, 📷 캡쳐도 그대로 사용)
+document.querySelectorAll('.js-open-img').forEach(a => {
+    a.addEventListener('click', e => {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;   // 새 탭으로 열기는 그대로 허용
+        e.preventDefault();
+        urlPanel.open(a.href, a.dataset.phone || '');
     });
 });
 document.getElementById('url-panel-copy').addEventListener('click', () => {
