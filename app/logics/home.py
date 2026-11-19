@@ -220,8 +220,7 @@ def update_gift_score() -> int:
              , NULLIF(image_filename, 'None') AS image_filename
         FROM received_messages
         WHERE base_dt between DATE_FORMAT(DATE_SUB(now(), INTERVAL 7 DAY), '%Y%m%01') and  DATE_FORMAT(DATE_SUB(now(), INTERVAL 0 DAY), '%Y%m%d')
-          AND use_yn = 'Y'
-          AND gift_yn = 'A'
+        AND gift_yn = 'A'
     """)).mappings().all()
 
     # 바코드 검출기 설정 (기본값은 기프티콘 이미지에서 놓침·오검출이 많아 조정함)
