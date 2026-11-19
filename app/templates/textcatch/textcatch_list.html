@@ -242,6 +242,24 @@
         text-decoration: none;
     }
     .url-panel iframe { flex: 1; width: 100%; border: none; }
+    .url-panel iframe[hidden], .url-panel-img[hidden] { display: none; }
+    /* 첨부 이미지: 패널 크기에 맞춰 전체가 보이도록 축소 (스크롤 없음) */
+    .url-panel-img {
+        flex: 1;
+        min-height: 0;          /* flex 자식이 이미지 크기만큼 늘어나 스크롤 생기는 것 방지 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        background: #f4f4f4;
+        overflow: hidden;
+    }
+    .url-panel-img img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: block;
+    }
     @media (max-width: 700px) {
         .url-panel { width: 100vw; border-left: none; }
     }
@@ -693,6 +711,7 @@
             <button type="button" id="url-panel-close" title="닫기">&times;</button>
         </div>
         <iframe id="url-panel-frame" title="URL 미리보기" referrerpolicy="no-referrer"></iframe>
+        <div class="url-panel-img" id="url-panel-img" hidden><img alt="첨부 이미지"></div>
     </div>
 
     {# 새 창(팝업)으로 연 경우 캡쳐 막대 (확장 프로그램 필요) #}
@@ -917,8 +936,19 @@ const urlPanel = {
     frame: document.getElementById('url-panel-frame'),
     phone: document.getElementById('url-panel-phone'),
     url:   document.getElementById('url-panel-url'),
-    open(url, phone) {
-        if (this.frame.src !== url) this.frame.src = url;
+    imgBox: document.getElementById('url-panel-img'),
+    // isImage: 첨부 이미지면 iframe 대신 <img> 로 패널에 맞춰 표시
+    open(url, phone, isImage) {
+        const img = this.imgBox.querySelector('img');
+        if (isImage) {
+            this.frame.src = 'about:blank';
+            img.src = url;
+        } else {
+            img.removeAttribute('src');
+            if (this.frame.src !== url) this.frame.src = url;
+        }
+        this.frame.hidden = !!isImage;
+        this.imgBox.hidden = !isImage;
         this.phone.textContent = phone;
         this.url.textContent = url;
         this.url.title = url;
@@ -927,6 +957,7 @@ const urlPanel = {
     close() {
         this.el.hidden = true;
         this.frame.src = 'about:blank';
+        this.imgBox.querySelector('img').removeAttribute('src');
     },
 };
 function notifyCopied(ok, phone, btn) {
@@ -952,7 +983,7 @@ document.querySelectorAll('.js-open-img').forEach(a => {
     a.addEventListener('click', e => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;   // 새 탭으로 열기는 그대로 허용
         e.preventDefault();
-        urlPanel.open(a.href, a.dataset.phone || '');
+        urlPanel.open(a.href, a.dataset.phone || '', true);
     });
 });
 document.getElementById('url-panel-copy').addEventListener('click', () => {
@@ -1109,7 +1140,7 @@ document.getElementById('url-panel-capture').addEventListener('click', async () 
     }
     // 현재 탭을 공유했다면 캡쳐 크기 ≒ 화면 크기 × 배율 → 패널 위치를 그 배율로 환산
     const scale = canvas.width / window.innerWidth;
-    const r = urlPanel.frame.getBoundingClientRect();
+    const r = (urlPanel.imgBox.hidden ? urlPanel.frame : urlPanel.imgBox).getBoundingClientRect();   // 지금 보이는 본문 영역
     const panelRect = { x: r.left * scale, y: r.top * scale, w: r.width * scale, h: r.height * scale };
     // 현재 탭을 공유한 경우(가로세로 비율이 화면과 같음)에만 패널 영역을 자동 선택
     const sameTab = Math.abs(canvas.height / scale - window.innerHeight) < 40;
