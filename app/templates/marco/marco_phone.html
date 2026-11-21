@@ -37,6 +37,7 @@
     .marco-table td.url a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .marco-table .dt { font-size: 13px; color: #555; }
     .flag-ai { color: #8e44ad; font-weight: bold; }
+    .flag-pickle { color: #d35400; font-weight: bold; }
     .flag-human { color: #27ae60; font-weight: bold; }
     .no-data { padding: 40px; color: #999; }
 
@@ -52,7 +53,7 @@
 
 <div class="container py-4">
     <h2 class="page-title">📞 전화번호별 작업 조회</h2>
-    <p class="page-desc">AI 매크로 작업(flag = ai) 중 입력한 전화번호가 아직 하지 않은 작업 목록입니다.</p>
+    <p class="page-desc">pickle 매크로 작업(flag = pickle) 중 입력한 전화번호가 아직 하지 않은 작업 목록입니다.</p>
 
     <form class="search-form" method="GET" action="{{ url_for('marco_phone_bp.marco_phone') }}">
         <div class="field f-phone">
@@ -113,7 +114,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="no-data">남은 AI 작업이 없습니다.</td></tr>
+                <tr><td colspan="6" class="no-data">남은 작업이 없습니다.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

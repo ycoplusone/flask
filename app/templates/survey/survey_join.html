@@ -3,6 +3,7 @@
 {% block content %}
 <style>
   .flag-ai { color: #8e44ad; font-weight: bold; }
+  .flag-pickle { color: #d35400; font-weight: bold; }
   .flag-human { color: #27ae60; font-weight: bold; }
 .chart-container {
   display: flex;
@@ -182,7 +183,7 @@
       <label for="job-flag">구분</label>
       <select id="job-flag" name="flag">
         <option value="human">human</option>
-        <option value="ai">ai</option>
+        <option value="pickle">pickle</option>
       </select>
     </div>
     <div class="field f-sort">
@@ -336,7 +337,9 @@
         tr.classList.add('is-selected');
         f.name.value = f.orgName.value = tr.dataset.jobNm;
         f.url.value  = f.orgUrl.value  = tr.dataset.url;
-        f.flag.value = f.orgFlag.value = tr.dataset.flag;
+        f.orgFlag.value = tr.dataset.flag;
+        // 기존 ai 기록은 선택 목록에 없으므로 pickle 로 바꿔서 수정
+        f.flag.value = tr.dataset.flag === 'ai' ? 'pickle' : tr.dataset.flag;
         f.sort.value = tr.dataset.sort;
         mode.textContent = '✏️ 선택한 작업 수정 (같은 작업명·URL·구분의 기록 전체가 함께 수정됩니다)';
       } else {

@@ -5,7 +5,7 @@ from app import db
 
 def get_marco_by_phone(phone: str, limit: int = 500):
     """
-    AI 매크로 작업(marco_info.flag = 'ai') 중 이 전화번호가 아직 하지 않은 작업 목록
+    pickle 매크로 작업(marco_info.flag = 'pickle') 중 이 전화번호가 아직 하지 않은 작업 목록
       - 이미 한 작업 = marco_detail 에 (mi_seq, phone_number) 가 있는 작업 → 제외
     phone : 숫자만 남겨 비교 (010-1234-5678 → 01012345678)
     반환  : (rows, total) sort 낮은 순 → 최근 등록 순, 최대 limit 건
@@ -16,7 +16,7 @@ def get_marco_by_phone(phone: str, limit: int = 500):
 
     base = """
         FROM marco_info a
-        WHERE a.flag = 'ai'
+        WHERE a.flag = 'pickle'
           AND a.seq NOT IN (
                 SELECT mi_seq
                 FROM marco_detail
@@ -44,7 +44,7 @@ def get_marco_by_phone(phone: str, limit: int = 500):
 def set_marco_done(seq: int, phone: str) -> bool:
     """
     처리완료: marco_detail 에 (mi_seq, phone_number) 기록 → 이후 이 번호 목록에서 제외
-    - flag = 'ai' 인 작업만 허용
+    - flag = 'pickle' 인 작업만 허용
     - 이미 기록된 건은 다시 넣지 않음 (버튼 연타/새로고침 대비)
     반환 : 새로 기록했으면 True
     """
@@ -57,7 +57,7 @@ def set_marco_done(seq: int, phone: str) -> bool:
         SELECT a.seq, :phone, NOW()
         FROM marco_info a
         WHERE a.seq = :seq
-          AND a.flag = 'ai'
+          AND a.flag = 'pickle'
           AND NOT EXISTS (
                 SELECT 1
                 FROM marco_detail d
