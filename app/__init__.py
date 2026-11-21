@@ -23,7 +23,7 @@ def create_app():
     def check_device_auth():
         # 로그인 페이지나 정적 파일(CSS 등) 접근 시에는 체크 건너뛰기
         print(f"request.endpoint : {request.endpoint}")
-        if request.endpoint in ['loging_bp.login', 'static','textCatch.receive_message','textCatch.TextCatch','textCatch.textCatchApkVersion','textCatch.textCatchApkDownload','job_log_bp.job_log','survey_info_bp.survey_info_bare']:
+        if request.endpoint in ['loging_bp.login', 'static','textCatch.receive_message','textCatch.TextCatch','textCatch.textCatchApkVersion','textCatch.textCatchApkDownload','job_log_bp.job_log','survey_info_bp.survey_info_bare','job_log_bp.survey_marco']:
             return
 
         # 브라우저 쿠키에서 device_token 가져오기
@@ -108,6 +108,9 @@ def create_app():
 
     from .routes.textCatch import main_bp as textCatch_bp
     app.register_blueprint(textCatch_bp) # textCatch_bp 등록
+
+    from .routes.marco_phone import marco_phone_bp
+    app.register_blueprint(marco_phone_bp) # 전화번호별 매크로 작업 조회 (독립 화면, 메뉴 미등록)
 
     # routes - end
 

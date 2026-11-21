@@ -2,6 +2,8 @@
 
 {% block content %}
 <style>
+  .flag-ai { color: #8e44ad; font-weight: bold; }
+  .flag-human { color: #27ae60; font-weight: bold; }
 .chart-container {
   display: flex;
   flex-wrap: wrap;
@@ -91,7 +93,49 @@
   overflow: auto;
 }
 
+/* 작업 등록/수정 */
+.job-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+.job-form.is-edit { background: #fff8e6; border-color: #f5d48a; }
+.job-form .field { display: flex; flex-direction: column; gap: 4px; }
+.job-form label { font-size: 12px; color: #888; }
+.job-form .f-name { flex: 1 1 200px; }
+.job-form .f-url  { flex: 2 1 280px; }
+.job-form .f-name input, .job-form .f-url input { width: 100%; }
+.job-form .mode { font-size: 13px; font-weight: bold; color: #555; flex-basis: 100%; }
+.job-form .btn-job {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-job-add { background: #28a745; }
+.btn-job-add:hover { background: #1e7e34; }
+.btn-job-upd { background: #fd7e14; }
+.btn-job-upd:hover { background: #d9650b; }
+.btn-job-cancel { background: #6c757d; }
+.btn-job-cancel:hover { background: #545b62; }
+.job-form [hidden] { display: none; }
+
+#surveyTable tbody tr.js-job-row { cursor: pointer; }
+#surveyTable tbody tr.js-job-row:hover td { background: #f3f8ff; }
+#surveyTable tbody tr.is-selected td { background: #fff3cd; }
+
 @media (max-width: 700px) {
+  .job-form .field { flex: 1 1 100%; }
+  .job-form .btn-job { flex: 1 1 0; }
+  #surveyTable tbody tr.is-selected { background: #fff3cd; }
   .chart-box { min-width: 0; flex-basis: 100%; }
   .form-row button { flex: 1 1 100%; }
   .survey-table-wrap { max-height: none; overflow: visible; }
@@ -111,6 +155,41 @@
     </div>
   </form>
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}
+      <div class="message-box {{ 'is-error' if category == 'error' else '' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- 작업 등록 / 수정 (표의 행을 클릭하면 수정 모드) -->
+  <form class="job-form" id="job-form" method="POST" action="{{ url_for('survey_join.surveyJobAdd') }}">
+    <div class="mode" id="job-mode">➕ 새 작업 등록</div>
+    <input type="hidden" name="base_mm" value="{{ base_mm }}">
+    <input type="hidden" name="url" value="{{ url }}">
+    <input type="hidden" name="org_job_nm" id="org-job-nm" disabled>
+    <input type="hidden" name="org_url" id="org-url" disabled>
+    <input type="hidden" name="org_flag" id="org-flag" disabled>
+    <div class="field f-name">
+      <label for="job-nm">작업명</label>
+      <input type="text" id="job-nm" name="job_nm" maxlength="256" required>
+    </div>
+    <div class="field f-url">
+      <label for="job-url">URL</label>
+      <input type="text" id="job-url" name="job_url" maxlength="512" required placeholder="https://">
+    </div>
+    <div class="field">
+      <label for="job-flag">구분</label>
+      <select id="job-flag" name="flag">
+        <option value="human">human</option>
+        <option value="ai">ai</option>
+      </select>
+    </div>
+    <button type="submit" class="btn-job btn-job-add" id="btn-job-add">등록</button>
+    <button type="submit" class="btn-job btn-job-upd" id="btn-job-upd"
+            formaction="{{ url_for('survey_join.surveyJobUpdate') }}" hidden>수정</button>
+    <button type="button" class="btn-job btn-job-cancel" id="btn-job-cancel" hidden>취소</button>
+  </form>
+
   <div class="chart-container">
     <div id="chart-sales" class="chart-box"></div>
     <div id="chart-expense" class="chart-box"></div>
@@ -122,6 +201,7 @@
       <colgroup>
         <col style="width:15%">
         <col style="width:20%">
+        <col style="width:6%">
         <col style="width:10%">
         <col style="width:10%">
         <col style="width:5%">
@@ -132,6 +212,7 @@
         <tr>
           <th>작업명</th>
           <th>URL</th>
+          <th>구분</th>
           <th>시작 시간</th>
           <th>종료 시간</th>
           <th>시작 횟수</th>
@@ -142,9 +223,15 @@
       <tbody>
         {% if table_rows %}
           {% for row in table_rows %}
+          {% if row.job_nm == 'Total' and not row.flag %}
           <tr>
+          {% else %}
+          <tr class="js-job-row" title="클릭하면 위 입력란에서 수정"
+              data-job-nm="{{ row.job_nm or '' }}" data-url="{{ row.url or '' }}" data-flag="{{ row.flag or 'human' }}">
+          {% endif %}
             <td class="cell-title" data-label="작업명">{{ row.job_nm }}</td>
             <td class="cell-block" data-label="URL">{{ row.url }}</td>
+            <td data-label="구분">{% if row.flag %}<span class="flag-{{ row.flag }}">{{ row.flag }}</span>{% endif %}</td>
             <td data-label="시작 시간">{{ row.st_dt }}</td>
             <td data-label="종료 시간">{{ row.ed_dt }}</td>
             <td data-label="시작 횟수">{{ row.st_ct }}</td>
@@ -154,7 +241,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="7" class="text-center py-3">조회된 데이터가 없습니다.</td>
+            <td colspan="8" class="text-center py-3">조회된 데이터가 없습니다.</td>
           </tr>
         {% endif %}
       </tbody>
@@ -212,5 +299,59 @@
       exportMenu: { visible: false }
     }
   });
+</script>
+<script>
+  // 작업 등록/수정: 표의 행 클릭 → 입력란에 채우고 수정 모드
+  // (차트 스크립트 오류와 무관하게 동작하도록 별도 <script> 로 분리)
+  (function () {
+    const form = document.getElementById('job-form');
+    const f = {
+      name: document.getElementById('job-nm'),
+      url:  document.getElementById('job-url'),
+      flag: document.getElementById('job-flag'),
+      orgName: document.getElementById('org-job-nm'),
+      orgUrl:  document.getElementById('org-url'),
+      orgFlag: document.getElementById('org-flag'),
+    };
+    const mode = document.getElementById('job-mode');
+    const btnAdd = document.getElementById('btn-job-add');
+    const btnUpd = document.getElementById('btn-job-upd');
+    const btnCancel = document.getElementById('btn-job-cancel');
+    let selected = null;
+
+    function setEdit(tr) {
+      if (selected) selected.classList.remove('is-selected');
+      selected = tr;
+      const on = !!tr;
+      if (on) {
+        tr.classList.add('is-selected');
+        f.name.value = f.orgName.value = tr.dataset.jobNm;
+        f.url.value  = f.orgUrl.value  = tr.dataset.url;
+        f.flag.value = f.orgFlag.value = tr.dataset.flag;
+        mode.textContent = '✏️ 선택한 작업 수정 (같은 작업명·URL·구분의 기록 전체가 함께 수정됩니다)';
+      } else {
+        f.name.value = f.url.value = '';
+        f.flag.value = 'human';
+        mode.textContent = '➕ 새 작업 등록';
+      }
+      // 수정 모드에서만 원래 값(org_*)을 전송
+      [f.orgName, f.orgUrl, f.orgFlag].forEach(el => { el.disabled = !on; });
+      form.classList.toggle('is-edit', on);
+      btnUpd.hidden = btnCancel.hidden = !on;
+      btnAdd.textContent = on ? '새로 등록' : '등록';
+      if (on) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        f.name.focus();
+      }
+    }
+
+    document.querySelectorAll('#surveyTable .js-job-row').forEach(tr => {
+      tr.addEventListener('click', () => setEdit(tr === selected ? null : tr));
+    });
+    btnCancel.addEventListener('click', () => setEdit(null));
+    btnUpd.addEventListener('click', e => {
+      if (!confirm('선택한 작업을 수정할까요?')) e.preventDefault();
+    });
+  })();
 </script>
 {% endblock %}

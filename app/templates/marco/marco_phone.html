@@ -1,0 +1,125 @@
+{% extends "base_bare.html" %}
+{# 독립 화면: 상단 메뉴 없음, 메뉴에도 등록하지 않음 (/marco_phone 직접 접속) #}
+
+{% block content %}
+<style>
+    .container { max-width: 1200px; }
+    .page-title { color: #8e44ad; }
+    .page-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+    .search-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+        padding: 12px 15px;
+        margin-bottom: 16px;
+        background: #fafafa;
+        border: 1px solid #eee;
+        border-radius: 6px;
+    }
+    .search-form .field { display: flex; flex-direction: column; gap: 4px; }
+    .search-form label { font-size: 12px; color: #888; }
+    .search-form .f-phone input { width: 200px; font-family: monospace; }
+    .btn-search {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 4px;
+        background: #8e44ad;
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .btn-search:hover { background: #732d91; }
+
+    .marco-table { table-layout: fixed; font-size: 14px; }
+    .marco-table td.job-nm { text-align: left; white-space: pre-line; }
+    .marco-table td.url { text-align: left; }
+    .marco-table td.url a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .marco-table .dt { font-size: 13px; color: #555; }
+    .flag-ai { color: #8e44ad; font-weight: bold; }
+    .flag-human { color: #27ae60; font-weight: bold; }
+    .no-data { padding: 40px; color: #999; }
+
+    @media (max-width: 700px) {
+        .search-form .field { flex: 1 1 calc(50% - 5px); min-width: 0; }
+        .search-form .field input, .search-form .field select { width: 100%; }
+        .search-form .f-phone { flex-basis: 100%; }
+        .btn-search { flex: 1 1 100%; }
+        .marco-table { table-layout: auto; }
+        .marco-table td.url a { white-space: normal; }
+    }
+</style>
+
+<div class="container py-4">
+    <h2 class="page-title">📞 전화번호별 작업 조회</h2>
+    <p class="page-desc">AI 매크로 작업(flag = ai) 중 입력한 전화번호가 아직 하지 않은 작업 목록입니다.</p>
+
+    <form class="search-form" method="GET" action="{{ url_for('marco_phone_bp.marco_phone') }}">
+        <div class="field f-phone">
+            <label for="phone">전화번호 (필수)</label>
+            <input type="text" id="phone" name="phone" value="{{ phone }}" placeholder="01012345678" inputmode="tel" required autofocus>
+        </div>
+        <button type="submit" class="btn-search">조회</button>
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, msg in messages %}
+        <div class="message-box {{ 'is-error' if category == 'error' else '' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% if searched %}
+    <p class="result-count">
+        총 <strong>{{ total }}</strong>건{% if total > rows|length %} (최근 {{ rows|length }}건만 표시){% endif %}
+    </p>
+
+    <div class="table-scroll">
+        <table class="marco-table table-cards">
+            <colgroup>
+                <col style="width: 70px;">
+                <col>
+                <col style="width: 26%;">
+                <col style="width: 70px;">
+                <col style="width: 100px;">
+                <col style="width: 100px;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>작업명</th>
+                    <th>URL</th>
+                    <th>구분</th>
+                    <th>등록일시</th>
+                    <th>처리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td data-label="No">{{ row.seq }}</td>
+                    <td class="job-nm cell-block" data-label="작업명">{{ row.job_nm or '' }}</td>
+                    <td class="url" data-label="URL">
+                        {% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noreferrer" title="{{ row.url }}">{{ row.url }}</a>{% else %}-{% endif %}
+                    </td>
+                    <td data-label="구분"><span class="flag-{{ row.flag }}">{{ row.flag }}</span></td>
+                    <td data-label="등록일시" class="dt">{% if row.created_at %}{{ row.created_at.strftime('%y.%m.%d') }}<br>{{ row.created_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
+                    <td data-label="처리">
+                        <form method="POST" action="{{ url_for('marco_phone_bp.marco_phone_done') }}"
+                              onsubmit="return confirm('{{ row.seq }}번 작업을 처리완료할까요?');">
+                            <input type="hidden" name="seq" value="{{ row.seq }}">
+                            <input type="hidden" name="phone" value="{{ phone }}">
+                            <button type="submit" class="btn-done">처리완료</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="no-data">남은 AI 작업이 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="no-data">전화번호를 입력하고 조회하세요.</p>
+    {% endif %}
+</div>
+{% endblock %}
