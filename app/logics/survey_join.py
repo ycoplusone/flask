@@ -92,6 +92,7 @@ def get_survey_table_rows(base_mm: str, url: str):
     table_sql = text(r"""
         SELECT 'Total' AS job_nm,
                '' AS url,
+               '' AS flag,
                NOW() AS st_dt,
                '' AS ed_dt,
                SUM(job_st_cnt) AS st_ct,
@@ -102,6 +103,7 @@ def get_survey_table_rows(base_mm: str, url: str):
         UNION ALL
         SELECT job_nm,
                url,
+               COALESCE(flag, 'human') AS flag,
                MIN(job_st_dt) AS st_dt,
                MAX(job_ed_dt) AS ed_dt,
                SUM(job_st_cnt) AS st_ct,
@@ -110,9 +112,48 @@ def get_survey_table_rows(base_mm: str, url: str):
         FROM marco_info
         WHERE DATE_FORMAT(job_st_dt, '%Y%m%d') LIKE :base_mm
           AND (COALESCE(url, '*') LIKE :search_url OR job_nm LIKE :search_url)
-        GROUP BY job_nm, url
-        ORDER BY 3 DESC
+        GROUP BY job_nm, url, COALESCE(flag, 'human')
+        ORDER BY 4 DESC
     """)
 
     result = db.session.execute(table_sql, params)
     return [dict(row) for row in result.mappings()]
+
+
+MARCO_FLAGS = ('human', 'ai')
+
+
+def add_marco_job(job_nm: str, url: str, flag: str) -> int:
+    """
+    작업 직접 등록 (marco_info 1행). 시작 시각은 지금, 시작/완료 횟수는 0
+    - 같은 날 같은 url·flag 로 /job_log, /survey_marco 가 호출되면 이 행의 횟수가 올라감
+    반환 : 새 seq
+    """
+    result = db.session.execute(text("""
+        INSERT INTO marco_info (job_nm, url, flag, job_st_dt, job_ed_dt, job_st_cnt, job_ed_cnt)
+        VALUES (:job_nm, :url, :flag, NOW(), NULL, 0, 0)
+    """), {'job_nm': job_nm, 'url': url, 'flag': flag})
+    db.session.commit()
+    return result.lastrowid
+
+
+def update_marco_job(org_job_nm: str, org_url: str, org_flag: str, job_nm: str, url: str, flag: str) -> int:
+    """
+    작업 수정. 표의 한 행은 (작업명, url, flag) 로 묶인 여러 날짜의 기록이므로
+    같은 (작업명, url, flag) 기록을 모두 함께 수정한다.
+    반환 : 수정된 행 수
+    """
+    result = db.session.execute(text("""
+        UPDATE marco_info
+        SET job_nm = :job_nm
+          , url    = :url
+          , flag   = :flag
+        WHERE COALESCE(job_nm, '') = :org_job_nm   -- 표에는 NULL 이 빈 값으로 보이므로 동일하게 비교
+          AND COALESCE(url, '')    = :org_url
+          AND COALESCE(flag, 'human') = :org_flag
+    """), {
+        'job_nm': job_nm, 'url': url, 'flag': flag,
+        'org_job_nm': org_job_nm, 'org_url': org_url, 'org_flag': org_flag,
+    })
+    db.session.commit()
+    return result.rowcount
