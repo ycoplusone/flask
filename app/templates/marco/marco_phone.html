@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-    .container { max-width: 1200px; }
+    .container { max-width: 1600px; }
     .page-title { color: #8e44ad; }
     .page-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
     .search-form {
@@ -36,6 +36,11 @@
     .marco-table td.url { text-align: left; }
     .marco-table td.url a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .marco-table .dt { font-size: 13px; color: #555; }
+    .marco-table .sort { font-weight: bold; }
+    .marco-table td.etc { text-align: left; font-size: 13px; color: #555; }
+    .marco-table td.prize { text-align: left; }
+    .due-over { color: #aaa; text-decoration: line-through; }   /* 마감 지남 */
+    .due-today { color: #e74c3c; font-weight: bold; }            /* 오늘 마감 */
     .flag-ai { color: #8e44ad; font-weight: bold; }
     .flag-pickle { color: #d35400; font-weight: bold; }
     .flag-human { color: #27ae60; font-weight: bold; }
@@ -77,18 +82,32 @@
     <div class="table-scroll">
         <table class="marco-table table-cards">
             <colgroup>
-                <col style="width: 70px;">
-                <col>
-                <col style="width: 26%;">
-                <col style="width: 70px;">
-                <col style="width: 100px;">
-                <col style="width: 100px;">
+                <col style="width: 60px;">   {# No #}
+                <col style="width: 60px;">   {# 우선순위 #}
+                <col>                        {# 작업명 #}
+                <col style="width: 100px;">  {# 이벤트 종류 #}
+                <col style="width: 130px;">  {# 상품 #}
+                <col style="width: 60px;">   {# 갯수 #}
+                <col style="width: 80px;">   {# 마감일자 #}
+                <col style="width: 80px;">   {# 발표일자 #}
+                <col style="width: 16%;">    {# URL #}
+                <col style="width: 140px;">  {# 특이사항 #}
+                <col style="width: 60px;">   {# 구분 #}
+                <col style="width: 80px;">   {# 등록일시 #}
+                <col style="width: 100px;">  {# 처리 #}
             </colgroup>
             <thead>
                 <tr>
                     <th>No</th>
+                    <th>우선순위</th>
                     <th>작업명</th>
+                    <th>이벤트 종류</th>
+                    <th>상품</th>
+                    <th>갯수</th>
+                    <th>마감일자</th>
+                    <th>발표일자</th>
                     <th>URL</th>
+                    <th>특이사항</th>
                     <th>구분</th>
                     <th>등록일시</th>
                     <th>처리</th>
@@ -98,10 +117,26 @@
                 {% for row in rows %}
                 <tr>
                     <td data-label="No">{{ row.seq }}</td>
+                    <td data-label="우선순위" class="sort">{{ row.sort }}</td>
                     <td class="job-nm cell-block" data-label="작업명">{{ row.job_nm or '' }}</td>
+                    <td data-label="이벤트 종류">{{ row.event_nm or '-' }}</td>
+                    <td class="prize" data-label="상품">{{ row.prize_nm or '-' }}</td>
+                    <td data-label="갯수">{{ row.prize_cnt or '-' }}</td>
+                    <td data-label="마감일자" class="dt">
+                        {% set due = (row.due_dt or '')[:8] %}
+                        {% if due|length == 8 %}
+                            <span class="{{ 'due-over' if due < today else ('due-today' if due == today else '') }}"
+                                  title="{{ '마감 지남' if due < today else ('오늘 마감' if due == today else '') }}">{{ due[2:4] }}.{{ due[4:6] }}.{{ due[6:8] }}</span>
+                        {% else %}{{ row.due_dt or '-' }}{% endif %}
+                    </td>
+                    <td data-label="발표일자" class="dt">
+                        {% set ann = row.ann_dt or '' %}
+                        {% if ann|length == 8 %}{{ ann[2:4] }}.{{ ann[4:6] }}.{{ ann[6:8] }}{% else %}{{ ann or '-' }}{% endif %}
+                    </td>
                     <td class="url" data-label="URL">
                         {% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noreferrer" title="{{ row.url }}">{{ row.url }}</a>{% else %}-{% endif %}
                     </td>
+                    <td class="etc cell-block" data-label="특이사항">{{ row.etc or '' }}</td>
                     <td data-label="구분"><span class="flag-{{ row.flag }}">{{ row.flag }}</span></td>
                     <td data-label="등록일시" class="dt">{% if row.created_at %}{{ row.created_at.strftime('%y.%m.%d') }}<br>{{ row.created_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
                     <td data-label="처리">
@@ -114,7 +149,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="no-data">남은 작업이 없습니다.</td></tr>
+                <tr><td colspan="13" class="no-data">남은 작업이 없습니다.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

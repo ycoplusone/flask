@@ -8,7 +8,7 @@ def get_marco_by_phone(phone: str, limit: int = 500):
     pickle 매크로 작업(marco_info.flag = 'pickle') 중 이 전화번호가 아직 하지 않은 작업 목록
       - 이미 한 작업 = marco_detail 에 (mi_seq, phone_number) 가 있는 작업 → 제외
     phone : 숫자만 남겨 비교 (010-1234-5678 → 01012345678)
-    반환  : (rows, total) sort 낮은 순 → 최근 등록 순, 최대 limit 건
+    반환  : (rows, total) 마감일 빠른 순(없으면 뒤) → 우선순위 낮은 순 → 최근 등록 순, 최대 limit 건
     """
     digits = ''.join(ch for ch in (phone or '') if ch.isdigit())
     if not digits:
@@ -33,8 +33,18 @@ def get_marco_by_phone(phone: str, limit: int = 500):
              , a.url
              , a.flag
              , a.job_st_dt AS created_at   -- marco_info 에 created_at 컬럼이 없어 등록 시각(job_st_dt) 사용
+             , COALESCE(a.sort, 2) AS sort -- 우선순위
+             , a.due_dt                    -- 마감일자 YYYYMMDD
+             , a.ann_dt                    -- 발표일자 YYYYMMDD
+             , a.prize_nm                  -- 상품
+             , a.prize_cnt                 -- 갯수
+             , a.event_nm                  -- 이벤트 종류
+             , a.etc                       -- 특이사항
     """ + base + """
-        ORDER BY COALESCE(a.sort, 2) ASC, a.seq DESC   -- sort 낮은 순, 같으면 최근 등록 순
+        ORDER BY (a.due_dt IS NULL OR a.due_dt = '') ASC   -- 마감일 없는 건은 맨 뒤
+               , a.due_dt ASC                            -- 마감일 빠른 순 (YYYYMMDD 문자열 비교)
+               , COALESCE(a.sort, 2) ASC                 -- 같은 마감일이면 우선순위 낮은 순
+               , a.seq DESC                              -- 그다음 최근 등록 순
         LIMIT :limit
     """), {**params, 'limit': limit}).mappings().all()
 
