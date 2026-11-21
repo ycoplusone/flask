@@ -111,6 +111,7 @@
 .job-form .f-name { flex: 1 1 200px; }
 .job-form .f-url  { flex: 2 1 280px; }
 .job-form .f-name input, .job-form .f-url input { width: 100%; }
+.job-form .f-sort input { width: 80px; }
 .job-form .mode { font-size: 13px; font-weight: bold; color: #555; flex-basis: 100%; }
 .job-form .btn-job {
   padding: 10px 16px;
@@ -184,6 +185,10 @@
         <option value="ai">ai</option>
       </select>
     </div>
+    <div class="field f-sort">
+      <label for="job-sort">정렬</label>
+      <input type="number" id="job-sort" name="sort" value="2" step="1">
+    </div>
     <button type="submit" class="btn-job btn-job-add" id="btn-job-add">등록</button>
     <button type="submit" class="btn-job btn-job-upd" id="btn-job-upd"
             formaction="{{ url_for('survey_join.surveyJobUpdate') }}" hidden>수정</button>
@@ -202,6 +207,7 @@
         <col style="width:15%">
         <col style="width:20%">
         <col style="width:6%">
+        <col style="width:5%">
         <col style="width:10%">
         <col style="width:10%">
         <col style="width:5%">
@@ -213,6 +219,7 @@
           <th>작업명</th>
           <th>URL</th>
           <th>구분</th>
+          <th>정렬</th>
           <th>시작 시간</th>
           <th>종료 시간</th>
           <th>시작 횟수</th>
@@ -227,11 +234,12 @@
           <tr>
           {% else %}
           <tr class="js-job-row" title="클릭하면 위 입력란에서 수정"
-              data-job-nm="{{ row.job_nm or '' }}" data-url="{{ row.url or '' }}" data-flag="{{ row.flag or 'human' }}">
+              data-job-nm="{{ row.job_nm or '' }}" data-url="{{ row.url or '' }}" data-flag="{{ row.flag or 'human' }}" data-sort="{{ row.sort if row.sort is not none else 2 }}">
           {% endif %}
             <td class="cell-title" data-label="작업명">{{ row.job_nm }}</td>
             <td class="cell-block" data-label="URL">{{ row.url }}</td>
             <td data-label="구분">{% if row.flag %}<span class="flag-{{ row.flag }}">{{ row.flag }}</span>{% endif %}</td>
+            <td data-label="정렬">{{ row.sort if row.sort is not none else '' }}</td>
             <td data-label="시작 시간">{{ row.st_dt }}</td>
             <td data-label="종료 시간">{{ row.ed_dt }}</td>
             <td data-label="시작 횟수">{{ row.st_ct }}</td>
@@ -241,7 +249,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="8" class="text-center py-3">조회된 데이터가 없습니다.</td>
+            <td colspan="9" class="text-center py-3">조회된 데이터가 없습니다.</td>
           </tr>
         {% endif %}
       </tbody>
@@ -309,6 +317,7 @@
       name: document.getElementById('job-nm'),
       url:  document.getElementById('job-url'),
       flag: document.getElementById('job-flag'),
+      sort: document.getElementById('job-sort'),
       orgName: document.getElementById('org-job-nm'),
       orgUrl:  document.getElementById('org-url'),
       orgFlag: document.getElementById('org-flag'),
@@ -328,10 +337,12 @@
         f.name.value = f.orgName.value = tr.dataset.jobNm;
         f.url.value  = f.orgUrl.value  = tr.dataset.url;
         f.flag.value = f.orgFlag.value = tr.dataset.flag;
+        f.sort.value = tr.dataset.sort;
         mode.textContent = '✏️ 선택한 작업 수정 (같은 작업명·URL·구분의 기록 전체가 함께 수정됩니다)';
       } else {
         f.name.value = f.url.value = '';
         f.flag.value = 'human';
+        f.sort.value = '2';
         mode.textContent = '➕ 새 작업 등록';
       }
       // 수정 모드에서만 원래 값(org_*)을 전송
