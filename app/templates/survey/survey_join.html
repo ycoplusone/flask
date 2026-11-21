@@ -2,6 +2,10 @@
 
 {% block content %}
 <style>
+  .container { max-width: 1600px; }
+  #surveyTable td.prize, #surveyTable td.etc { text-align: left; font-size: 13px; }
+  .due-over { color: #aaa; text-decoration: line-through; }   /* 마감 지남 */
+  .due-today { color: #e74c3c; font-weight: bold; }            /* 오늘 마감 */
   .flag-ai { color: #8e44ad; font-weight: bold; }
   .flag-pickle { color: #d35400; font-weight: bold; }
   .flag-human { color: #27ae60; font-weight: bold; }
@@ -113,6 +117,12 @@
 .job-form .f-url  { flex: 2 1 280px; }
 .job-form .f-name input, .job-form .f-url input { width: 100%; }
 .job-form .f-sort input { width: 80px; }
+.job-form .f-date input { width: 150px; }
+.job-form .f-prize input { width: 180px; }
+.job-form .f-cnt input { width: 90px; }
+.job-form .f-etc { flex: 1 1 200px; }
+.job-form .f-etc input { width: 100%; }
+.job-form .row-break { flex-basis: 100%; height: 0; }   /* 추가 항목은 다음 줄에 */
 .job-form .mode { font-size: 13px; font-weight: bold; color: #555; flex-basis: 100%; }
 .job-form .btn-job {
   padding: 10px 16px;
@@ -187,8 +197,29 @@
       </select>
     </div>
     <div class="field f-sort">
-      <label for="job-sort">정렬</label>
+      <label for="job-sort">우선순위</label>
       <input type="number" id="job-sort" name="sort" value="2" step="1">
+    </div>
+    <div class="row-break"></div>
+    <div class="field f-date">
+      <label for="job-due">마감일</label>
+      <input type="date" id="job-due" name="due_dt">
+    </div>
+    <div class="field f-date">
+      <label for="job-ann">발표일</label>
+      <input type="date" id="job-ann" name="ann_dt">
+    </div>
+    <div class="field f-prize">
+      <label for="job-prize">상품</label>
+      <input type="text" id="job-prize" name="prize_nm" maxlength="64">
+    </div>
+    <div class="field f-cnt">
+      <label for="job-cnt">갯수</label>
+      <input type="text" id="job-cnt" name="prize_cnt" maxlength="64">
+    </div>
+    <div class="field f-etc">
+      <label for="job-etc">기타</label>
+      <input type="text" id="job-etc" name="etc" maxlength="128">
     </div>
     <button type="submit" class="btn-job btn-job-add" id="btn-job-add">등록</button>
     <button type="submit" class="btn-job btn-job-upd" id="btn-job-upd"
@@ -205,22 +236,32 @@
   <div class="survey-table-wrap">
     <table id="surveyTable" class="table-cards">
       <colgroup>
-        <col style="width:15%">
-        <col style="width:20%">
-        <col style="width:6%">
-        <col style="width:5%">
-        <col style="width:10%">
-        <col style="width:10%">
-        <col style="width:5%">
-        <col style="width:5%">
-        <col style="width:5%">
+        <col style="width:12%">  {# 작업명 #}
+        <col style="width:15%">  {# URL #}
+        <col style="width:5%">   {# 구분 #}
+        <col style="width:4%">   {# 우선순위 #}
+        <col style="width:6%">   {# 마감일 #}
+        <col style="width:6%">   {# 발표일 #}
+        <col style="width:9%">   {# 상품 #}
+        <col style="width:4%">   {# 갯수 #}
+        <col style="width:9%">   {# 기타 #}
+        <col style="width:8%">   {# 시작 시간 #}
+        <col style="width:8%">   {# 종료 시간 #}
+        <col style="width:4%">
+        <col style="width:4%">
+        <col style="width:4%">
       </colgroup>
       <thead>
         <tr>
           <th>작업명</th>
           <th>URL</th>
           <th>구분</th>
-          <th>정렬</th>
+          <th>우선순위</th>
+          <th>마감일</th>
+          <th>발표일</th>
+          <th>상품</th>
+          <th>갯수</th>
+          <th>기타</th>
           <th>시작 시간</th>
           <th>종료 시간</th>
           <th>시작 횟수</th>
@@ -235,12 +276,25 @@
           <tr>
           {% else %}
           <tr class="js-job-row" title="클릭하면 위 입력란에서 수정"
-              data-job-nm="{{ row.job_nm or '' }}" data-url="{{ row.url or '' }}" data-flag="{{ row.flag or 'human' }}" data-sort="{{ row.sort if row.sort is not none else 2 }}">
+              data-job-nm="{{ row.job_nm or '' }}" data-url="{{ row.url or '' }}" data-flag="{{ row.flag or 'human' }}" data-sort="{{ row.sort if row.sort is not none else 2 }}"
+              data-due="{{ (row.due_dt or '')[:8] }}" data-ann="{{ row.ann_dt or '' }}"
+              data-prize="{{ row.prize_nm or '' }}" data-cnt="{{ row.prize_cnt or '' }}" data-etc="{{ row.etc or '' }}">
           {% endif %}
             <td class="cell-title" data-label="작업명">{{ row.job_nm }}</td>
             <td class="cell-block" data-label="URL">{{ row.url }}</td>
             <td data-label="구분">{% if row.flag %}<span class="flag-{{ row.flag }}">{{ row.flag }}</span>{% endif %}</td>
-            <td data-label="정렬">{{ row.sort if row.sort is not none else '' }}</td>
+            <td data-label="우선순위">{{ row.sort if row.sort is not none else '' }}</td>
+            <td data-label="마감일">
+              {% set due = (row.due_dt or '')[:8] %}
+              {% if due|length == 8 %}<span class="{{ 'due-over' if due < today else ('due-today' if due == today else '') }}">{{ due[2:4] }}.{{ due[4:6] }}.{{ due[6:8] }}</span>{% endif %}
+            </td>
+            <td data-label="발표일">
+              {% set ann = row.ann_dt or '' %}
+              {% if ann|length == 8 %}{{ ann[2:4] }}.{{ ann[4:6] }}.{{ ann[6:8] }}{% else %}{{ ann }}{% endif %}
+            </td>
+            <td class="prize" data-label="상품">{{ row.prize_nm or '' }}</td>
+            <td data-label="갯수">{{ row.prize_cnt or '' }}</td>
+            <td class="etc" data-label="기타">{{ row.etc or '' }}</td>
             <td data-label="시작 시간">{{ row.st_dt }}</td>
             <td data-label="종료 시간">{{ row.ed_dt }}</td>
             <td data-label="시작 횟수">{{ row.st_ct }}</td>
@@ -250,7 +304,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="9" class="text-center py-3">조회된 데이터가 없습니다.</td>
+            <td colspan="14" class="text-center py-3">조회된 데이터가 없습니다.</td>
           </tr>
         {% endif %}
       </tbody>
@@ -319,6 +373,11 @@
       url:  document.getElementById('job-url'),
       flag: document.getElementById('job-flag'),
       sort: document.getElementById('job-sort'),
+      due:   document.getElementById('job-due'),
+      ann:   document.getElementById('job-ann'),
+      prize: document.getElementById('job-prize'),
+      cnt:   document.getElementById('job-cnt'),
+      etc:   document.getElementById('job-etc'),
       orgName: document.getElementById('org-job-nm'),
       orgUrl:  document.getElementById('org-url'),
       orgFlag: document.getElementById('org-flag'),
@@ -328,6 +387,8 @@
     const btnUpd = document.getElementById('btn-job-upd');
     const btnCancel = document.getElementById('btn-job-cancel');
     let selected = null;
+    // 'YYYYMMDD' → 날짜 입력칸 값 'YYYY-MM-DD' (형식이 다르면 빈 값)
+    const ymdToInput = v => /^\d{8}$/.test(v || '') ? `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}` : '';
 
     function setEdit(tr) {
       if (selected) selected.classList.remove('is-selected');
@@ -341,11 +402,17 @@
         // 기존 ai 기록은 선택 목록에 없으므로 pickle 로 바꿔서 수정
         f.flag.value = tr.dataset.flag === 'ai' ? 'pickle' : tr.dataset.flag;
         f.sort.value = tr.dataset.sort;
+        f.due.value = ymdToInput(tr.dataset.due);
+        f.ann.value = ymdToInput(tr.dataset.ann);
+        f.prize.value = tr.dataset.prize;
+        f.cnt.value = tr.dataset.cnt;
+        f.etc.value = tr.dataset.etc;
         mode.textContent = '✏️ 선택한 작업 수정 (같은 작업명·URL·구분의 기록 전체가 함께 수정됩니다)';
       } else {
         f.name.value = f.url.value = '';
         f.flag.value = 'human';
         f.sort.value = '2';
+        f.due.value = f.ann.value = f.prize.value = f.cnt.value = f.etc.value = '';
         mode.textContent = '➕ 새 작업 등록';
       }
       // 수정 모드에서만 원래 값(org_*)을 전송

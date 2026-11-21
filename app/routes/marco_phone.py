@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from app.logics.marco_phone import get_marco_by_phone, set_marco_done
@@ -18,6 +20,7 @@ def marco_phone():
     return render_template(
         'marco/marco_phone.html',
         phone=phone, rows=rows, total=total, searched=bool(phone),
+        today=datetime.now().strftime('%Y%m%d'),   # 마감일 지남/오늘 표시용
     )
 
 
