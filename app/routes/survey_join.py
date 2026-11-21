@@ -41,7 +41,7 @@ def _readJobForm():
     if len(job_url) > 512:
         return None, None, None, None, 'URL: 512자 이하로 입력해 주세요.'
     if flag not in MARCO_FLAGS:
-        return None, None, None, None, '구분은 human 또는 ai 만 가능합니다.'
+        return None, None, None, None, '구분은 human 또는 pickle 만 가능합니다.'
     if sort_raw == '':
         sort = 2
     else:

@@ -21,7 +21,7 @@ def job_log():
 @job_log_bp.route('/survey_marco', methods=['POST'])
 def survey_marco():
     """
-    AI 매크로 작업 기록 (marco_info.flag = 'ai'). /job_log 와 동일하게 동작
+    pickle 매크로 작업 기록 (marco_info.flag = 'pickle'). /job_log 와 동일하게 동작
     입력 : job_nm, url (form / query / JSON 모두 가능), flag (선택: 'E' 종료, 없으면 시작)
            sort (선택: 정수, 없으면 2) → 새 행을 등록할 때 marco_info.sort 에 저장
     예) curl -X POST http://localhost:5000/survey_marco -d "job_nm=설문A" -d "url=https://example.com/s?id=1"
@@ -46,5 +46,5 @@ def survey_marco():
         except ValueError:
             return jsonify({'error': 'sort must be an integer'}), 400
 
-    macro_job_log(job_nm, url_path, flag, marco_flag='ai', sort=sort)
+    macro_job_log(job_nm, url_path, flag, marco_flag='pickle', sort=sort)
     return jsonify({'status': 'ok'})

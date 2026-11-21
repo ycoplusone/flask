@@ -8,7 +8,7 @@ marco_phone_bp = Blueprint('marco_phone_bp', __name__)
 @marco_phone_bp.route('/marco_phone', methods=['GET'])
 def marco_phone():
     """
-    전화번호 기준 AI 매크로 작업(marco_info.flag='ai') 중 아직 안 한 작업 조회
+    전화번호 기준 pickle 매크로 작업(marco_info.flag='pickle') 중 아직 안 한 작업 조회
     독립 화면 (상단 메뉴 없음, 메뉴 미등록)
     예) /marco_phone?phone=01012345678
     """

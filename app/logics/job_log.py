@@ -19,8 +19,8 @@ def macro_job_log(job_nm: str, url_path: str, flag: str, marco_flag: str = 'huma
     """
     매크로 작업 시작/종료 기록 (marco_info)
     flag       : 'E' 종료 기록, 그 외 시작 기록
-    marco_flag : marco_info.flag 컬럼 값 ('human' 기본 / 'ai' 는 /survey_marco API)
-                 같은 url 이라도 human / ai 기록은 서로 섞이지 않게 따로 집계
+    marco_flag : marco_info.flag 컬럼 값 ('human' 기본 / 'pickle' 은 /survey_marco API)
+                 같은 url 이라도 flag 가 다르면 기록이 섞이지 않게 따로 집계
     sort       : marco_info.sort 값 (새 행을 만들 때만 저장, 기본 2)
     """
     job_nm = _sanitize(job_nm)

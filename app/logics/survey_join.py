@@ -122,7 +122,7 @@ def get_survey_table_rows(base_mm: str, url: str):
     return [dict(row) for row in result.mappings()]
 
 
-MARCO_FLAGS = ('human', 'ai')
+MARCO_FLAGS = ('human', 'pickle')   # 화면 등록/수정에서 쓸 수 있는 구분 (ai 는 pickle 로 대체)
 
 
 def add_marco_job(job_nm: str, url: str, flag: str, sort: int = 2) -> int:
