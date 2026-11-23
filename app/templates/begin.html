@@ -17,6 +17,7 @@
 		<button type="button" class="nav-more-btn" aria-expanded="false" aria-haspopup="true" title="메뉴 더보기"><span class="icon">☰</span><span class="nav-label">메뉴</span></button>
 		<div class="nav-more-panel">
 		<a href="/temp_marco_info" 	class="{{ 'active' if request.path == '/temp_marco_info' else '' }}"><span class="icon">🔁</span><span class="nav-label">중복 등록 url</span></a>
+		<a href="/pickle_detail" 	class="{{ 'active' if request.path == '/pickle_detail' else '' }}"><span class="icon">🥒</span><span class="nav-label">피클상세</span></a>
 		<a href="/textcatch/phone" 	class="{{ 'active' if request.path == '/textcatch/phone' else '' }}"><span class="icon">📱</span><span class="nav-label">번호관리</span></a>
 		<a href="/survey_info/bare?is_verified=N" target="_blank" rel="noopener" title="메뉴 없는 화면 (새 탭)"><span class="icon">🗂️</span><span class="nav-label">수집 데이터(단독)</span></a>
 		<a href="/marco_phone" target="_blank" rel="noopener" title="메뉴 없는 화면 (새 탭)"><span class="icon">📞</span><span class="nav-label">전화번호별 작업</span></a>

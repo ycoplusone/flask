@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{# 피클상세: marco_detail(처리 기록) + marco_info(작업) 조회, 조회 년월 like 검색 #}
+
+{% block content %}
+<style>
+    .container { max-width: 1600px; }
+    .page-title { color: #8e44ad; }
+    .page-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+    .search-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+    .search-form .field { display: flex; flex-direction: column; gap: 4px; }
+    .search-form label { font-size: 12px; color: #888; }
+    .search-form input { width: 180px; font-family: monospace; }
+    .btn-search { background: #8e44ad; color: #fff; border: none; border-radius: 4px; padding: 7px 22px; font-weight: bold; cursor: pointer; }
+    .btn-search:hover { background: #732d91; }
+    .total { font-size: 13px; color: #555; margin-bottom: 8px; }
+    .detail-table { table-layout: fixed; font-size: 14px; }
+    .detail-table td.job-nm { text-align: left; white-space: pre-line; }
+    .detail-table td.url { text-align: left; }
+    .detail-table td.url a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .detail-table td.left { text-align: left; }
+    .detail-table td.etc { text-align: left; font-size: 13px; color: #555; }
+    .detail-table .dt { font-size: 13px; color: #555; }
+    .flag-pickle { color: #d35400; font-weight: bold; }
+    .flag-human { color: #27ae60; font-weight: bold; }
+    .flag-none { color: #999; }
+    .st-y { color: #27ae60; font-weight: bold; }   /* 성공(완료) */
+    .st-n { color: #e74c3c; font-weight: bold; }   /* 이상(미완료) */
+    .no-data { padding: 40px; color: #999; }
+    /* 접기/펼치기: 작업(seq) 행 클릭 → 처리 기록(mi_seq) 행 표시 */
+    .tool-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .tool-row .total { margin: 0; }
+    .btn-toggle-all { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+    .btn-toggle-all:hover { background: #f4f4f4; }
+    tr.job-row { cursor: pointer; }
+    tr.job-row:hover { background: #faf5fc; }
+    tr.job-row.open { background: #f5ecfa; }
+    .caret { display: inline-block; transition: transform .15s; color: #8e44ad; }
+    tr.job-row.open .caret { transform: rotate(90deg); }
+    .cnt-badge { font-size: 12px; color: #888; }
+    tr.detail-row { display: none; }
+    tr.detail-row.open { display: table-row; }
+    tr.detail-row > td { background: #fcfaFD; padding: 6px 10px 10px 40px; }
+    .sub-table { width: 100%; font-size: 13px; margin: 0; background: #fff; }
+    .sub-table th { background: #f3eef6; font-size: 12px; }
+    .sub-table td.etc { text-align: left; }
+    @media (max-width: 700px) {
+        .detail-table { table-layout: auto; }
+        tr.detail-row.open { display: block; }
+        tr.detail-row > td { padding: 6px 0; }
+        .search-form .field, .search-form input, .btn-search { flex: 1 1 100%; width: 100%; }
+    }
+</style>
+
+<div class="container py-4">
+    <h2 class="page-title">🥒 피클상세</h2>
+    <p class="page-desc">처리완료 기록(marco_detail)과 작업 정보(marco_info)입니다. 조회 년월은 처리 시각 기준 앞자리 검색입니다. (2026 → 2026년 전체, 202611 → 2026년 11월)</p>
+
+    <form class="search-form" method="GET" action="{{ url_for('pickle_detail_bp.pickle_detail') }}">
+        <div class="field">
+            <label for="base_mm">조회 년월</label>
+            <input type="text" id="base_mm" name="base_mm" value="{{ base_mm }}" placeholder="ex) 202611" maxlength="7" inputmode="numeric">
+        </div>
+        <button type="submit" class="btn-search">조회</button>
+    </form>
+
+    <div class="tool-row">
+        <p class="total">작업 {{ '{:,}'.format(groups|length) }}건 · 처리 기록 전체 {{ '{:,}'.format(total) }}건{% if total > shown %} · 앞 {{ '{:,}'.format(shown) }}건만 표시{% endif %}</p>
+        <div>
+            <button type="button" class="btn-toggle-all" data-open="1">모두 펼치기</button>
+            <button type="button" class="btn-toggle-all" data-open="0">모두 접기</button>
+        </div>
+    </div>
+
+    <div class="table-scroll">
+        <table class="detail-table table-cards">
+            <colgroup>
+                <col style="width: 36px;">   {# 접기/펼치기 #}
+                <col style="width: 60px;">   {# seq #}
+                <col style="width: 60px;">   {# 구분 #}
+                <col>                        {# 작업명 #}
+                <col style="width: 17%;">    {# URL #}
+                <col style="width: 80px;">   {# 마감일 #}
+                <col style="width: 80px;">   {# 발표일 #}
+                <col style="width: 100px;">  {# 이벤트 종류 #}
+                <col style="width: 120px;">  {# 상품 #}
+                <col style="width: 60px;">   {# 갯수 #}
+                <col style="width: 110px;">  {# 처리 결과 #}
+                <col style="width: 90px;">   {# 최근 처리일시 #}
+            </colgroup>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>seq</th>
+                    <th>구분</th>
+                    <th>작업명</th>
+                    <th>URL</th>
+                    <th>마감일</th>
+                    <th>발표일</th>
+                    <th>이벤트 종류</th>
+                    <th>상품</th>
+                    <th>갯수</th>
+                    <th>처리 결과</th>
+                    <th>최근 처리일시</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% macro ymd(v) %}{% if v and v|length >= 8 %}{{ v[2:4] }}.{{ v[4:6] }}.{{ v[6:8] }}{% else %}-{% endif %}{% endmacro %}
+                {% macro dt(v) %}{% if v %}{{ v.strftime('%y.%m.%d') }}<br>{{ v.strftime('%H:%M:%S') }}{% else %}-{% endif %}{% endmacro %}
+                {% for g in groups %}
+                {# 부모 행: 작업(marco_info.seq) — 클릭하면 아래 처리 기록 펼침 #}
+                <tr class="job-row" data-seq="{{ g.seq }}" aria-expanded="false">
+                    <td data-label="펼치기"><span class="caret">▶</span></td>
+                    <td data-label="seq"><b>{{ g.seq }}</b></td>
+                    <td data-label="구분"><span class="flag-{{ g.flag }}">{{ g.flag or '-' }}</span></td>
+                    <td class="job-nm" data-label="작업명">{{ g.job_nm or '' }}</td>
+                    <td class="url" data-label="URL">
+                        {% if g.url %}<a href="{{ g.url if '://' in g.url else 'https://' ~ g.url }}" target="_blank" rel="noopener" title="{{ g.url }}">{{ g.url }}</a>{% else %}-{% endif %}
+                    </td>
+                    <td data-label="마감일" class="dt">{{ ymd(g.due_dt) }}</td>
+                    <td data-label="발표일" class="dt">{{ ymd(g.ann_dt) }}</td>
+                    <td data-label="이벤트 종류">{{ g.event_nm or '-' }}</td>
+                    <td class="left" data-label="상품">{{ g.prize_nm or '-' }}</td>
+                    <td data-label="갯수">{{ g.prize_cnt or '-' }}</td>
+                    <td data-label="처리 결과">
+                        <span class="st-y">성공 {{ g.t_cnt }}</span> / <span class="st-n">이상 {{ g.f_cnt }}</span><br>
+                        <span class="cnt-badge">총 {{ g.details|length }}건</span>
+                    </td>
+                    <td data-label="최근 처리일시" class="dt">{{ dt(g.last_at) }}</td>
+                </tr>
+                {# 자식 행: 처리 기록(marco_detail, mi_seq = seq) #}
+                <tr class="detail-row" data-parent="{{ g.seq }}">
+                    <td colspan="12">
+                        <table class="table table-sm table-bordered sub-table">
+                            <thead>
+                                <tr><th style="width:90px;">상세 No</th><th style="width:80px;">mi_seq</th><th style="width:80px;">처리구분</th><th>비고</th><th style="width:150px;">처리일시</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for d in g.details %}
+                                <tr>
+                                    <td data-label="상세 No">{{ d.detail_seq }}</td>
+                                    <td data-label="mi_seq">{{ d.mi_seq }}</td>
+                                    <td data-label="처리구분">
+                                        {% if d.status == 'y' %}<span class="st-y">성공</span>{% elif d.status == 'n' %}<span class="st-n">이상</span>{% else %}-{% endif %}
+                                    </td>
+                                    <td class="etc" data-label="비고">{{ d.etc or '' }}</td>
+                                    <td data-label="처리일시" class="dt">{% if d.created_at %}{{ d.created_at.strftime('%y.%m.%d %H:%M:%S') }}{% else %}-{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="12" class="no-data">조회된 데이터가 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// 접기/펼치기: 작업 행 클릭 → 처리 기록 행 열기/닫기 (URL 링크 클릭은 제외)
+(function () {
+    const setOpen = (row, open) => {
+        const child = document.querySelector('tr.detail-row[data-parent="' + row.dataset.seq + '"]');
+        row.classList.toggle('open', open);
+        row.setAttribute('aria-expanded', open);
+        if (child) child.classList.toggle('open', open);
+    };
+    document.querySelectorAll('tr.job-row').forEach((row) => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return;
+            setOpen(row, !row.classList.contains('open'));
+        });
+    });
+    document.querySelectorAll('.btn-toggle-all').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const open = btn.dataset.open === '1';
+            document.querySelectorAll('tr.job-row').forEach((row) => setOpen(row, open));
+        });
+    });
+})();
+</script>
+{% endblock %}
