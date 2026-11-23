@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{# 중복 등록 url 리스트: temp_marco_info 조회 전용 (등록 시각 최신 순) #}
+
+{% block content %}
+<style>
+    .container { max-width: 1600px; }
+    .page-title { color: #8e44ad; }
+    .page-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+    .total { font-size: 13px; color: #555; margin-bottom: 8px; }
+    .temp-table { table-layout: fixed; font-size: 14px; }
+    .temp-table td.job-nm { text-align: left; white-space: pre-line; }
+    .temp-table td.url { text-align: left; }
+    .temp-table td.url a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .temp-table td.left { text-align: left; }
+    .temp-table td.etc { text-align: left; font-size: 13px; color: #555; }
+    .temp-table .dt { font-size: 13px; color: #555; }
+    .flag-pickle { color: #d35400; font-weight: bold; }
+    .flag-human { color: #27ae60; font-weight: bold; }
+    .flag-none { color: #999; }
+    .no-data { padding: 40px; color: #999; }
+    @media (max-width: 700px) {
+        .temp-table { table-layout: auto; }
+    }
+</style>
+
+<div class="container py-4">
+    <h2 class="page-title">🔁 중복 등록 url 리스트</h2>
+    <p class="page-desc">이미 등록된 url 로 flag = Z 호출이 들어와 marco_info 대신 temp_marco_info 에 저장된 기록입니다. (최신 순)</p>
+
+    <p class="total">전체 {{ '{:,}'.format(total) }}건{% if total > rows|length %} · 최근 {{ rows|length }}건만 표시{% endif %}</p>
+
+    <div class="table-scroll">
+        <table class="temp-table table-cards">
+            <colgroup>
+                <col style="width: 60px;">   {# No #}
+                <col>                        {# 작업명 #}
+                <col style="width: 22%;">    {# URL #}
+                <col style="width: 70px;">   {# 구분 #}
+                <col style="width: 70px;">   {# 우선순위 #}
+                <col style="width: 80px;">   {# 마감일자 #}
+                <col style="width: 80px;">   {# 발표일자 #}
+                <col style="width: 120px;">  {# 상품 #}
+                <col style="width: 60px;">   {# 갯수 #}
+                <col style="width: 100px;">  {# 이벤트 종류 #}
+                <col style="width: 130px;">  {# 특이사항 #}
+                <col style="width: 90px;">   {# 등록일시 #}
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>작업명</th>
+                    <th>URL</th>
+                    <th>구분</th>
+                    <th>우선순위</th>
+                    <th>마감일자</th>
+                    <th>발표일자</th>
+                    <th>상품</th>
+                    <th>갯수</th>
+                    <th>이벤트 종류</th>
+                    <th>특이사항</th>
+                    <th>등록일시</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% macro ymd(v) %}{% if v and v|length >= 8 %}{{ v[2:4] }}.{{ v[4:6] }}.{{ v[6:8] }}{% else %}-{% endif %}{% endmacro %}
+                {% for row in rows %}
+                <tr>
+                    <td data-label="No">{{ row.seq }}</td>
+                    <td class="job-nm" data-label="작업명">{{ row.job_nm or '' }}</td>
+                    <td class="url" data-label="URL">
+                        {% if row.url %}<a href="{{ row.url if '://' in row.url else 'https://' ~ row.url }}" target="_blank" rel="noopener" title="{{ row.url }}">{{ row.url }}</a>{% else %}-{% endif %}
+                    </td>
+                    <td data-label="구분"><span class="flag-{{ row.flag }}">{{ row.flag or '-' }}</span></td>
+                    <td data-label="우선순위">{{ row.sort if row.sort is not none else '-' }}</td>
+                    <td data-label="마감일자" class="dt">{{ ymd(row.due_dt) }}</td>
+                    <td data-label="발표일자" class="dt">{{ ymd(row.ann_dt) }}</td>
+                    <td class="left" data-label="상품">{{ row.prize_nm or '-' }}</td>
+                    <td data-label="갯수">{{ row.prize_cnt or '-' }}</td>
+                    <td data-label="이벤트 종류">{{ row.event_nm or '-' }}</td>
+                    <td class="etc" data-label="특이사항">{{ row.etc or '' }}</td>
+                    <td data-label="등록일시" class="dt">{% if row.created_at %}{{ row.created_at.strftime('%y.%m.%d') }}<br>{{ row.created_at.strftime('%H:%M:%S') }}{% else %}-{% endif %}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="12" class="no-data">중복 등록된 url 이 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

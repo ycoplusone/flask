@@ -112,6 +112,9 @@ def create_app():
     from .routes.marco_phone import marco_phone_bp
     app.register_blueprint(marco_phone_bp) # 전화번호별 매크로 작업 조회 (독립 화면, 메뉴 미등록)
 
+    from .routes.temp_marco import temp_marco_bp
+    app.register_blueprint(temp_marco_bp) # 중복 등록 url 리스트 (temp_marco_info)
+
     # routes - end
 
 
