@@ -239,7 +239,7 @@
     <table id="surveyTable" class="table-cards">
       <colgroup>
         <col style="width:12%">  {# 작업명 #}
-        <col style="width:15%">  {# URL #}
+        <col style="width:11%">  {# URL #}
         <col style="width:5%">   {# 구분 #}
         <col style="width:4%">   {# 우선순위 #}
         <col style="width:6%">   {# 마감일 #}
@@ -252,6 +252,7 @@
         <col style="width:4%">
         <col style="width:4%">
         <col style="width:4%">
+        <col style="width:6%">   {# 피클결과 #}
       </colgroup>
       <thead>
         <tr>
@@ -269,6 +270,7 @@
           <th>시작 횟수</th>
           <th>완료 횟수</th>
           <th>일별 횟수</th>
+          <th>피클결과</th>
         </tr>
       </thead>
       <tbody>
@@ -302,11 +304,13 @@
             <td data-label="시작 횟수">{{ row.st_ct }}</td>
             <td data-label="완료 횟수">{{ row.ed_ct }}</td>
             <td data-label="일별 횟수">{{ row.tot_cnt }}</td>
+            {# 피클결과: 성공(t_cnt) / 다음 줄 이상(f_cnt), Total 행은 값이 없어 빈칸 #}
+            <td data-label="피클결과" class="text-nowrap">{% if row.t_cnt is not none and row.t_cnt != '' %}성공 : {{ row.t_cnt }}<br>이상 : {{ row.f_cnt }}{% endif %}</td>
           </tr>
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="14" class="text-center py-3">조회된 데이터가 없습니다.</td>
+            <td colspan="15" class="text-center py-3">조회된 데이터가 없습니다.</td>
           </tr>
         {% endif %}
       </tbody>
