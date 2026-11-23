@@ -43,6 +43,7 @@
     .sub-table { width: 100%; font-size: 13px; margin: 0; background: #fff; }
     .sub-table th { background: #f3eef6; font-size: 12px; }
     .sub-table td.etc { text-align: left; }
+    .sub-table td.phone { font-family: monospace; }
     @media (max-width: 700px) {
         .detail-table { table-layout: auto; }
         tr.detail-row.open { display: block; }
@@ -132,13 +133,14 @@
                     <td colspan="12">
                         <table class="table table-sm table-bordered sub-table">
                             <thead>
-                                <tr><th style="width:90px;">상세 No</th><th style="width:80px;">mi_seq</th><th style="width:80px;">처리구분</th><th>비고</th><th style="width:150px;">처리일시</th></tr>
+                                <tr><th style="width:90px;">상세 No</th><th style="width:80px;">mi_seq</th><th style="width:130px;">전화번호</th><th style="width:80px;">처리구분</th><th>비고</th><th style="width:150px;">처리일시</th></tr>
                             </thead>
                             <tbody>
                                 {% for d in g.details %}
                                 <tr>
                                     <td data-label="상세 No">{{ d.detail_seq }}</td>
                                     <td data-label="mi_seq">{{ d.mi_seq }}</td>
+                                    <td data-label="전화번호" class="phone">{{ d.phone_number or '-' }}</td>
                                     <td data-label="처리구분">
                                         {% if d.status == 'y' %}<span class="st-y">성공</span>{% elif d.status == 'n' %}<span class="st-n">이상</span>{% else %}-{% endif %}
                                     </td>
