@@ -102,7 +102,8 @@ def get_survey_table_rows(base_mm: str, url: str):
                SUM(job_ed_cnt) AS ed_ct,
                COUNT(DISTINCT CONCAT(job_nm, DATE_FORMAT(job_st_dt, '%Y%m%d'))) AS tot_cnt , 
                '' t_cnt ,
-                '' f_cnt
+                '' f_cnt ,
+                0 sort_no
         FROM marco_info
         WHERE DATE_FORMAT(job_st_dt, '%Y%m%d') LIKE :base_mm
         UNION ALL
@@ -122,13 +123,17 @@ def get_survey_table_rows(base_mm: str, url: str):
             SUM(a.job_ed_cnt) AS ed_ct,
             COUNT(DISTINCT CONCAT(a.job_nm, DATE_FORMAT(a.job_st_dt, '%Y%m%d'))) AS tot_cnt ,
             sum(case when b.status = 'y'then 1 else 0 end) t_cnt,
-            sum(case when b.status = 'n'then 1 else 0 end) f_cnt
+            sum(case when b.status = 'n'then 1 else 0 end) f_cnt,
+            case when max(COALESCE(a.due_dt, '')) = '' then 999 
+            	when DATEDIFF(STR_TO_DATE(max(COALESCE(a.due_dt, '')), '%Y%m%d'), now()) <= -1 then 9999999
+            	else  DATEDIFF(STR_TO_DATE(max(COALESCE(a.due_dt, '')), '%Y%m%d'), now())
+            end sort_no            
         FROM marco_info a
         left outer join marco_detail b on (a.seq = b.mi_seq)
         WHERE DATE_FORMAT(a.job_st_dt, '%Y%m%d') LIKE :base_mm
         AND (COALESCE(a.url, '*') LIKE :search_url OR a.job_nm LIKE :search_url)
         GROUP BY a.job_nm, a.url, COALESCE(a.flag, 'human')
-        ORDER BY st_dt DESC
+        ORDER BY 17
     """)
 
     result = db.session.execute(table_sql, params)
