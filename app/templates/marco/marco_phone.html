@@ -45,6 +45,11 @@
     .flag-pickle { color: #d35400; font-weight: bold; }
     .flag-human { color: #27ae60; font-weight: bold; }
     .no-data { padding: 40px; color: #999; }
+    /* 처리구분(완료/미완료 라디오) · 비고 입력 칸 */
+    .done-status { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: fit-content; margin: 0 auto; font-size: 13px; }   /* 라디오 세로 배치 */
+    .marco-table td.status-cell { padding-left: 2px; padding-right: 2px; }   /* 처리구분 칸 좌우 여백 축소 */
+    .done-status label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; margin: 0; }
+    .done-etc { width: 100%; box-sizing: border-box; font-size: 13px; padding: 3px 6px; }
 
     @media (max-width: 700px) {
         .search-form .field { flex: 1 1 calc(50% - 5px); min-width: 0; }
@@ -83,7 +88,6 @@
         <table class="marco-table table-cards">
             <colgroup>
                 <col style="width: 60px;">   {# No #}
-                <col style="width: 60px;">   {# 우선순위 #}
                 <col>                        {# 작업명 #}
                 <col style="width: 100px;">  {# 이벤트 종류 #}
                 <col style="width: 130px;">  {# 상품 #}
@@ -91,15 +95,15 @@
                 <col style="width: 80px;">   {# 마감일자 #}
                 <col style="width: 80px;">   {# 발표일자 #}
                 <col style="width: 16%;">    {# URL #}
-                <col style="width: 140px;">  {# 특이사항 #}
-                <col style="width: 60px;">   {# 구분 #}
+                <col style="width: 98px;">   {# 특이사항 #}
                 <col style="width: 80px;">   {# 등록일시 #}
+                <col style="width: 72px;">   {# 처리구분 #}
+                <col style="width: 180px;">  {# 비고 #}
                 <col style="width: 100px;">  {# 처리 #}
             </colgroup>
             <thead>
                 <tr>
                     <th>No</th>
-                    <th>우선순위</th>
                     <th>작업명</th>
                     <th>이벤트 종류</th>
                     <th>상품</th>
@@ -108,8 +112,9 @@
                     <th>발표일자</th>
                     <th>URL</th>
                     <th>특이사항</th>
-                    <th>구분</th>
                     <th>등록일시</th>
+                    <th>처리구분</th>
+                    <th>비고</th>
                     <th>처리</th>
                 </tr>
             </thead>
@@ -117,7 +122,6 @@
                 {% for row in rows %}
                 <tr>
                     <td data-label="No">{{ row.seq }}</td>
-                    <td data-label="우선순위" class="sort">{{ row.sort }}</td>
                     <td class="job-nm cell-block" data-label="작업명">{{ row.job_nm or '' }}</td>
                     <td data-label="이벤트 종류">{{ row.event_nm or '-' }}</td>
                     <td class="prize" data-label="상품">{{ row.prize_nm or '-' }}</td>
@@ -137,14 +141,23 @@
                         {% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noreferrer" title="{{ row.url }}">{{ row.url }}</a>{% else %}-{% endif %}
                     </td>
                     <td class="etc cell-block" data-label="특이사항">{{ row.etc or '' }}</td>
-                    <td data-label="구분"><span class="flag-{{ row.flag }}">{{ row.flag }}</span></td>
                     <td data-label="등록일시" class="dt">{% if row.created_at %}{{ row.created_at.strftime('%y.%m.%d') }}<br>{{ row.created_at.strftime('%H:%M') }}{% else %}-{% endif %}</td>
+                    {# 처리구분·비고는 별도 칸, form 속성으로 같은 행의 처리완료 폼에 함께 전송 #}
+                    <td data-label="처리구분" class="status-cell">
+                        <div class="done-status">
+                            <label><input type="radio" name="status" value="y" form="done-{{ row.seq }}" checked> 완료</label>
+                            <label><input type="radio" name="status" value="n" form="done-{{ row.seq }}"> 미완료</label>
+                        </div>
+                    </td>
+                    <td data-label="비고">
+                        <input type="text" name="etc" class="done-etc" form="done-{{ row.seq }}" maxlength="256" placeholder="비고">
+                    </td>
                     <td data-label="처리">
-                        <form method="POST" action="{{ url_for('marco_phone_bp.marco_phone_done') }}"
+                        <form id="done-{{ row.seq }}" method="POST" action="{{ url_for('marco_phone_bp.marco_phone_done') }}"
                               onsubmit="return confirm('{{ row.seq }}번 작업을 처리완료할까요?');">
                             <input type="hidden" name="seq" value="{{ row.seq }}">
                             <input type="hidden" name="phone" value="{{ phone }}">
-                            <button type="submit" class="btn-done">처리완료</button>
+                            <button type="submit" class="btn-done">처리<br>완료</button>
                         </form>
                     </td>
                 </tr>
