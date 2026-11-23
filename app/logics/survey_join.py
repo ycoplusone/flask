@@ -100,29 +100,34 @@ def get_survey_table_rows(base_mm: str, url: str):
                '' AS ed_dt,
                SUM(job_st_cnt) AS st_ct,
                SUM(job_ed_cnt) AS ed_ct,
-               COUNT(DISTINCT CONCAT(job_nm, DATE_FORMAT(job_st_dt, '%Y%m%d'))) AS tot_cnt
+               COUNT(DISTINCT CONCAT(job_nm, DATE_FORMAT(job_st_dt, '%Y%m%d'))) AS tot_cnt , 
+               '' t_cnt ,
+                '' f_cnt
         FROM marco_info
         WHERE DATE_FORMAT(job_st_dt, '%Y%m%d') LIKE :base_mm
         UNION ALL
-        SELECT job_nm,
-               url,
-               COALESCE(flag, 'human') AS flag,
-               MAX(COALESCE(sort, 2)) AS sort,   -- 묶인 기록 중 큰 값 (수정하면 모두 같은 값이 됨)
-               -- 아래 항목은 /survey_marco 가 새 행을 만들 때 저장. 묶인 기록 중 값이 있는 것(최대값) 표시
-               MAX(NULLIF(due_dt, ''))    AS due_dt,     -- 마감일 YYYYMMDD
-               MAX(NULLIF(ann_dt, ''))    AS ann_dt,     -- 발표일 YYYYMMDD
-               MAX(NULLIF(prize_nm, ''))  AS prize_nm,   -- 상품
-               MAX(NULLIF(prize_cnt, '')) AS prize_cnt,  -- 갯수
-               MAX(NULLIF(etc, ''))       AS etc,        -- 기타(특이사항)
-               MIN(job_st_dt) AS st_dt,
-               MAX(job_ed_dt) AS ed_dt,
-               SUM(job_st_cnt) AS st_ct,
-               SUM(job_ed_cnt) AS ed_ct,
-               COUNT(DISTINCT CONCAT(job_nm, DATE_FORMAT(job_st_dt, '%Y%m%d'))) AS tot_cnt
-        FROM marco_info
-        WHERE DATE_FORMAT(job_st_dt, '%Y%m%d') LIKE :base_mm
-          AND (COALESCE(url, '*') LIKE :search_url OR job_nm LIKE :search_url)
-        GROUP BY job_nm, url, COALESCE(flag, 'human')
+        SELECT a.job_nm,
+            a.url,
+            COALESCE(a.flag, 'human') AS flag,
+            MAX(COALESCE(a.sort, 2)) AS sort,   -- 묶인 기록 중 큰 값 (수정하면 모두 같은 값이 됨)
+            -- 아래 항목은 /survey_marco 가 새 행을 만들 때 저장. 묶인 기록 중 값이 있는 것(최대값) 표시
+            MAX(NULLIF(a.due_dt, ''))    AS due_dt,     -- 마감일 YYYYMMDD
+            MAX(NULLIF(a.ann_dt, ''))    AS ann_dt,     -- 발표일 YYYYMMDD
+            MAX(NULLIF(a.prize_nm, ''))  AS prize_nm,   -- 상품
+            MAX(NULLIF(a.prize_cnt, '')) AS prize_cnt,  -- 갯수
+            MAX(NULLIF(a.etc, ''))       AS etc,        -- 기타(특이사항)
+            MIN(a.job_st_dt) AS st_dt,
+            MAX(a.job_ed_dt) AS ed_dt,
+            SUM(a.job_st_cnt) AS st_ct,
+            SUM(a.job_ed_cnt) AS ed_ct,
+            COUNT(DISTINCT CONCAT(a.job_nm, DATE_FORMAT(a.job_st_dt, '%Y%m%d'))) AS tot_cnt ,
+            sum(case when b.status = 'y'then 1 else 0 end) t_cnt,
+            sum(case when b.status = 'n'then 1 else 0 end) f_cnt
+        FROM marco_info a
+        left outer join marco_detail b on (a.seq = b.mi_seq)
+        WHERE DATE_FORMAT(a.job_st_dt, '%Y%m%d') LIKE :base_mm
+        AND (COALESCE(a.url, '*') LIKE :search_url OR a.job_nm LIKE :search_url)
+        GROUP BY a.job_nm, a.url, COALESCE(a.flag, 'human')
         ORDER BY st_dt DESC
     """)
 
