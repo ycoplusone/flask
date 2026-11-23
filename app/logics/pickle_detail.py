@@ -17,7 +17,7 @@ def get_pickle_detail(base_mm: str, limit: int = 2000):
     조회 조건 : marco_detail.created_at 의 년월(YYYYMM) LIKE '입력값%'  (2026 → 2026년 전체, 202611 → 2026년 11월)
     반환 : (groups, total)  처리 기록 최대 limit 건을 작업(b.seq) 단위로 묶은 목록
            groups = [{seq, flag, job_nm, ..., t_cnt 성공 수, f_cnt 이상 수, last_at 최근 처리일시,
-                      details: [{detail_seq, mi_seq, status, etc, created_at}, ...]}, ...]
+                      details: [{detail_seq, mi_seq, phone_number, status, etc, created_at}, ...]}, ...]
            작업 seq 최신 순 → mi_seq 순 → 처리 seq 순
     """
     base = """
@@ -32,6 +32,7 @@ def get_pickle_detail(base_mm: str, limit: int = 2000):
         SELECT b.seq
              , a.mi_seq
              , a.seq AS detail_seq   -- marco_detail 자체 키 (처리 기록 No)
+             , a.phone_number        -- 처리한 전화번호
              , b.flag
              , b.job_nm
              , b.url
@@ -51,7 +52,7 @@ def get_pickle_detail(base_mm: str, limit: int = 2000):
 
 
 JOB_COLS = ('seq', 'flag', 'job_nm', 'url', 'due_dt', 'ann_dt', 'event_nm', 'prize_nm', 'prize_cnt')
-DETAIL_COLS = ('detail_seq', 'mi_seq', 'status', 'etc', 'created_at')
+DETAIL_COLS = ('detail_seq', 'mi_seq', 'phone_number', 'status', 'etc', 'created_at')
 
 
 def _group_by_seq(rows):
