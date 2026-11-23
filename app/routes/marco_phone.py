@@ -26,13 +26,19 @@ def marco_phone():
 
 @marco_phone_bp.route('/marco_phone/done', methods=['POST'])
 def marco_phone_done():
-    """처리완료 버튼: marco_detail 에 기록 후 같은 전화번호로 목록 복귀"""
+    """처리완료 버튼: marco_detail 에 (상태 y/n, 비고) 기록 후 같은 전화번호로 목록 복귀"""
     phone = (request.form.get('phone') or '').strip()
     seq = request.form.get('seq', '')
     seq = int(seq) if seq.isdigit() else 0
+    status = (request.form.get('status') or 'y').strip().lower()   # y: 완료, n: 미완료(이상건)
+    etc = (request.form.get('etc') or '').strip()
 
-    if set_marco_done(seq, phone):
-        flash(f'{seq}번 작업을 처리완료했습니다.', 'info')
+    if status not in ('y', 'n'):
+        flash('완료/미완료 중 하나를 선택해 주세요.', 'error')
+    elif len(etc) > 256:
+        flash('비고는 256자 이하로 입력해 주세요.', 'error')
+    elif set_marco_done(seq, phone, status, etc or None):
+        flash(f'{seq}번 작업을 {"완료" if status == "y" else "미완료"}로 처리했습니다.', 'info')
     else:
         flash('이미 처리완료됐거나 처리할 수 없는 작업입니다.', 'error')
 

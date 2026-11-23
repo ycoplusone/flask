@@ -55,7 +55,7 @@ def _readJobForm():
     if len(job_url) > 512:
         return fail('URL: 512자 이하로 입력해 주세요.')
     if flag not in MARCO_FLAGS:
-        return fail('구분은 human 또는 pickle 만 가능합니다.')
+        return fail('구분은 human, pickle, none 중 하나만 가능합니다.')
     if sort_raw == '':
         sort = 2
     else:
@@ -93,7 +93,10 @@ def surveyJobAdd():
         flash(err, 'error')
     else:
         seq = add_marco_job(job_nm, job_url, flag, sort, extra)
-        flash(f'작업을 등록했습니다. (No {seq}, {flag})', 'info')
+        if seq:
+            flash(f'작업을 등록했습니다. (No {seq}, {flag})', 'info')
+        else:
+            flash('이미 등록된 URL 입니다. 표에서 해당 행을 선택해 수정해 주세요.', 'error')
     return _redirectJoin()
 
 
@@ -110,7 +113,9 @@ def surveyJobUpdate():
         flash('수정할 행을 표에서 선택해 주세요.', 'error')
     else:
         cnt = update_marco_job(org_job_nm, org_url, org_flag, job_nm, job_url, flag, sort, extra)
-        if cnt:
+        if cnt == -1:
+            flash('다른 작업이 이미 사용 중인 URL 입니다.', 'error')
+        elif cnt:
             flash(f'{cnt}건을 수정했습니다.', 'info')
         else:
             flash('수정할 작업을 찾지 못했거나 바뀐 내용이 없습니다.', 'error')

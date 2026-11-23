@@ -168,12 +168,22 @@ td.text-left { text-align: left; }
   display: flex;
   gap: 16px;
   align-items: center;
+  position: relative;
+}
+/* 메뉴 링크: 넘치면 가로 스크롤 (펼침 메뉴가 잘리지 않도록 스크롤은 이 영역에만) */
+.nav-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.nav-menu::-webkit-scrollbar { display: none; }
-.nav-menu a {
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-menu a,
+.nav-more-btn {
   color: #bdc3c7;
   text-decoration: none;
   font-weight: bold;
@@ -185,11 +195,49 @@ td.text-left { text-align: left; }
   flex: 0 0 auto;
   border-bottom: 2px solid transparent;
 }
-.nav-menu a .icon { margin-right: 6px; font-size: 17px; }
+.nav-menu a .icon,
+.nav-more-btn .icon { margin-right: 6px; font-size: 17px; }
 .nav-menu a:hover,
-.nav-menu a.active {
+.nav-menu a.active,
+.nav-more-btn:hover,
+.nav-more.open .nav-more-btn,
+.nav-more:has(a.active) .nav-more-btn {   /* 현재 페이지가 펼침 메뉴 안에 있으면 버튼도 표시 */
   color: #fff;
   border-bottom-color: var(--accent);
+}
+
+/* ---------- 펼침 메뉴 (☰ 메뉴) ---------- */
+.nav-more { position: relative; flex: 0 0 auto; }
+.nav-more-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nav-more-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 210px;
+  background: var(--nav-bg);
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  padding: 6px 0;
+  z-index: 200;
+}
+.nav-more.open .nav-more-panel { display: block; }
+.nav-more-panel a {
+  display: flex;
+  padding: 10px 16px;
+  border-bottom: none;
+  border-left: 3px solid transparent;
+}
+.nav-more-panel a:hover,
+.nav-more-panel a.active {
+  border-left-color: var(--accent);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* ---------- 툴팁 (마우스 오버 + 터치/포커스) ---------- */
@@ -256,8 +304,10 @@ td.text-left { text-align: left; }
     padding: 8px 10px;
     margin-bottom: 16px;
   }
-  .nav-menu a { font-size: 14px; padding: 6px 8px; }
-  .nav-menu a .icon { margin-right: 4px; font-size: 15px; }
+  .nav-links { gap: 4px; }
+  .nav-menu a, .nav-more-btn { font-size: 14px; padding: 6px 8px; }
+  .nav-menu a .icon, .nav-more-btn .icon { margin-right: 4px; font-size: 15px; }
+  .nav-more-panel { top: calc(100% + 8px); }
 
   /* 폼 요소는 한 줄 전체 사용 */
   .add-form input[type="text"] { flex-basis: 100%; }
