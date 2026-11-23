@@ -25,7 +25,7 @@ def job_log():
 def survey_marco():
     """
     pickle 매크로 작업 기록 (marco_info.flag = 'pickle'). /job_log 와 동일하게 동작
-    입력 : job_nm, url (form / query / JSON 모두 가능), flag (선택: 'E' 종료, 없으면 시작)
+    입력 : job_nm, url (form / query / JSON 모두 가능), flag (선택: 'E' 종료, 'Z' 중복 url 이면 temp_marco_info 에 등록, 없으면 시작)
            sort (선택: 정수, 없으면 2) → 새 행을 등록할 때 marco_info.sort 에 저장
            due_dt (선택: 마감일자 YYYYMMDD / YYYY-MM-DD) → 새 행을 등록할 때 YYYYMMDD 로 저장 (시간은 버림)
            ann_dt (선택: 발표일자, due_dt 와 같은 형식)
@@ -36,7 +36,7 @@ def survey_marco():
     data = request.get_json(silent=True) or {}
     job_nm = request.values.get('job_nm') or data.get('job_nm')
     url_path = request.values.get('url') or data.get('url')
-    flag = request.values.get('flag') or data.get('flag') or 'S'
+    flag = request.values.get('flag') or data.get('flag') or 'z'
     sort_raw = request.values.get('sort')
     if sort_raw is None:
         sort_raw = data.get('sort')
