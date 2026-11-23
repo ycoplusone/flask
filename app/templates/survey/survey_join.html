@@ -142,6 +142,11 @@
 .job-form [hidden] { display: none; }
 
 #surveyTable tbody tr.js-job-row { cursor: pointer; }
+#surveyTable th.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+#surveyTable th.th-sort:hover { background: #e8f0fb; }
+#surveyTable th.th-sort .sort-mark { font-size: 11px; color: #999; }
+#surveyTable th.th-sort.asc .sort-mark,
+#surveyTable th.th-sort.desc .sort-mark { color: #3498db; }
 #surveyTable tbody tr.js-job-row:hover td { background: #f3f8ff; }
 #surveyTable tbody tr.is-selected td { background: #fff3cd; }
 
@@ -260,7 +265,7 @@
           <th>URL</th>
           <th>구분</th>
           <th>우선순위</th>
-          <th>마감일</th>
+          <th class="th-sort" id="th-due" title="클릭하면 마감일 순으로 정렬 (빠른 순 ↔ 늦은 순)">마감일 <span class="sort-mark">↕</span></th>
           <th>발표일</th>
           <th>상품</th>
           <th>갯수</th>
@@ -440,5 +445,34 @@
       if (!confirm('선택한 작업을 수정할까요?')) e.preventDefault();
     });
   })();
+</script>
+<script>
+// 마감일 헤더 클릭 → 화면에서만 정렬 (빠른 순 → 늦은 순 → 원래 순서), Total 행은 항상 맨 위, 마감일 없는 행은 맨 아래
+(function () {
+  const th = document.getElementById('th-due');
+  const tbody = document.querySelector('#surveyTable tbody');
+  if (!th || !tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr.js-job-row'));
+  rows.forEach((tr, i) => { tr.dataset.orgIdx = i; });   // 원래(조회) 순서 기억
+  const mark = th.querySelector('.sort-mark');
+  const STATES = ['asc', 'desc', ''];
+  let state = '';
+
+  th.addEventListener('click', () => {
+    state = STATES[(STATES.indexOf(state) + 1) % STATES.length];
+    th.classList.toggle('asc', state === 'asc');
+    th.classList.toggle('desc', state === 'desc');
+    mark.textContent = state === 'asc' ? '▲' : state === 'desc' ? '▼' : '↕';
+
+    const sorted = rows.slice().sort((a, b) => {
+      if (!state) return a.dataset.orgIdx - b.dataset.orgIdx;
+      const da = a.dataset.due || '', db = b.dataset.due || '';
+      if (!da !== !db) return da ? -1 : 1;                 // 마감일 없는 행은 항상 뒤
+      const cmp = da.localeCompare(db) * (state === 'asc' ? 1 : -1);
+      return cmp || a.dataset.orgIdx - b.dataset.orgIdx;   // 같은 마감일은 원래 순서
+    });
+    sorted.forEach(tr => tbody.appendChild(tr));            // Total 등 다른 행은 제자리(맨 위) 유지
+  });
+})();
 </script>
 {% endblock %}
